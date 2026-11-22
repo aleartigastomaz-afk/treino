@@ -176,6 +176,23 @@ nav.tabs button.on svg{stroke:var(--accent)}
 .logos button{border:3px solid transparent;border-radius:18px;padding:0;background:none;overflow:hidden;aspect-ratio:1;max-width:100%}
 .logos button.on{border-color:var(--accent)}
 .logos img{width:100%;height:100%;display:block}
+.agenda{background:var(--panel);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.agenda .ah{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.agenda .ah button{background:none;border:0;color:var(--accent);font-weight:600;font-size:13px}
+.ag{display:flex;align-items:center;gap:12px;padding-block:8px;border-bottom:1px solid var(--line)}
+.ag:last-child{border-bottom:0}
+.ag .tm{font-family:var(--display);font-weight:700;font-size:18px;min-width:86px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ag .act{flex:1;min-width:0;font-weight:600}
+.ag .act small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.ag .ico{width:34px;height:34px;border-radius:10px;background:var(--panel2);display:grid;place-items:center;font-size:18px;flex:none}
+.ag .tick{flex:none;width:36px;height:36px;border-radius:10px;border:2px solid var(--line);background:none;color:transparent;font-size:18px;display:grid;place-items:center}
+.ag .tick.on{background:var(--ok);border-color:var(--ok);color:#0d1422}
+.ag.done .act{color:var(--muted);text-decoration:line-through}
+.ag .del{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--muted);font-size:16px}
+.week h4{margin:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.addag{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addag select,.addag input{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;min-width:0}
+.addag .full{grid-column:1/-1}
 .auth{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(40px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
 .authbox{max-width:380px;margin:0 auto;display:flex;flex-direction:column;gap:12px;text-align:center}
 .authbox img{margin:0 auto;border-radius:20px}
@@ -243,7 +260,7 @@ document.documentElement.dataset.pal=DB.look.pal;
 let saveT=null;
 function save(){try{localStorage.setItem(KEY+"-look",JSON.stringify(DB.look))}catch(e){}
   clearTimeout(saveT);saveT=setTimeout(()=>{saveT=null;const me=U(DB.me);if(!me||!window.FB)return;
-    window.FB.save({name:USERS[DB.me]||"",sessions:me.sessions,body:me.body,photos:me.photos,look:DB.look,updated:Date.now()}).catch(err=>toast("Não consegui salvar online. Tento de novo quando tiver internet."))},500)}
+    window.FB.save({name:USERS[DB.me]||"",sessions:me.sessions,body:me.body,photos:me.photos,agenda:me.agenda||null,extras:me.extras||{},look:DB.look,updated:Date.now()}).catch(err=>toast("Não consegui salvar online. Tento de novo quando tiver internet."))},500)}
 let pendingRender=false;
 window.onData=(uid,all)=>{
   DB.me=uid;const ids=Object.keys(all);
@@ -251,7 +268,7 @@ window.onData=(uid,all)=>{
   const order=[uid,...ids.filter(i=>i!==uid).sort()];
   USERS={};UCOL={};const cols=["var(--accent)","var(--B)","var(--D)","var(--E)"];
   const users={};order.forEach((i,n)=>{const d=all[i];USERS[i]=d.name||"Atleta";UCOL[i]=cols[n%4];
-    users[i]=(i===uid&&saveT&&DB.users[i])?DB.users[i]:{sessions:d.sessions||{},body:d.body||[],photos:d.photos||[]}});
+    users[i]=(i===uid&&saveT&&DB.users[i])?DB.users[i]:{sessions:d.sessions||{},body:d.body||[],photos:d.photos||[],agenda:d.agenda||undefined,extras:d.extras||{}}});
   DB.users=users;
   if(all[uid].look&&!saveT)DB.look=all[uid].look;
   if(!all[uid].updated&&!ids.includes(uid))save();
@@ -319,6 +336,7 @@ function vHoje(){
   const sess=S[TODAY];const L=st.letter||sess?.letter||defaultLetter();
   const dayDone=Math.floor((d-parse(CYCLE.start))/864e5)+1,total=Math.round((parse(CYCLE.end)-parse(CYCLE.start))/864e5);
   let h=`<div><h2>${SEM[d.getDay()]}, ${d.getDate()} de ${MES[d.getMonth()]}</h2><div class="muted">${d.getFullYear()} · Treino ${L} · ${PLAN[L].name}${isWeekend()&&!sess?" · fim de semana, treino extra":""}</div></div>
+  ${agendaToday()}
   <div class="cycle"><div class="row" style="justify-content:space-between"><b>Ciclo ${CYCLE.n} · ${CYCLE.name}</b><span class="muted" style="font-size:13px">dia ${Math.max(1,dayDone)} de ${total}</span></div><div class="bar"><i style="width:${Math.min(100,Math.max(2,dayDone/total*100))}%"></i></div><span class="muted" style="font-size:12px">${br(CYCLE.start)}/2026 até ${br(CYCLE.end)}/2027. No fim, comparamos com o próximo treino.</span></div>
   <div class="letters">${LET.split("").map((x,i)=>`<button type="button" data-l="${x}" class="${x===L?"on":""}" style="--c:var(--${x})">${x}<span>${["seg","ter","qua","qui","sex"][i]}</span></button>`).join("")}</div>`;
   if(!L){return h+`<div class="tips">Hoje não tem treino marcado. Se quiser treinar mesmo assim, escolha uma letra acima.</div>`}
@@ -331,6 +349,31 @@ function vHoje(){
   h+=`<button type="button" class="big ${fin?"ghost":""}" id="finish">${fin?"Treino concluído ✓":"Terminar treino"}</button>
   <div class="tips">Toque no número da série quando terminar: o cronômetro de descanso começa sozinho. O peso da última vez já vem preenchido.</div>`;
   return h}
+/* ---------- agenda ---------- */
+const DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const AG_ALEX={"1":[{h:"06:00",t:"Academia"},{h:"07:30–08:00",t:"Corrida"}],"2":[{h:"06:00",t:"Academia"}],"3":[{h:"06:00",t:"Academia"},{h:"07:30",t:"Yoga"},{h:"Fim de tarde",t:"Corrida"}],"4":[{h:"06:00",t:"Academia"}],"5":[{h:"06:00",t:"Academia"},{h:"07:30–08:00",t:"Corrida"}]};
+function agendaOf(u){const x=U(u);if(!x.agenda&&/^alexandre/i.test(USERS[u]||""))x.agenda=JSON.parse(JSON.stringify(AG_ALEX));return x.agenda||{}}
+const isGym=t=>/academia|muscula/i.test(t);
+const agIcon=t=>/corr/i.test(t)?"🏃":/yoga/i.test(t)?"🧘":isGym(t)?"🏋️":/bike|pedal|cicl/i.test(t)?"🚴":/nat|pisc/i.test(t)?"🏊":"⏱️";
+const agKey=it=>it.h+"|"+it.t;
+const extrasOf=(u,k)=>((U(u).extras||{})[k])||{};
+function agendaRows(u,k,editable){const d=parse(k).getDay(),items=(agendaOf(u)[d]||[]),s=U(u).sessions[k],ex=extrasOf(u,k);
+  return items.map((it,i)=>{const gym=isGym(it.t),done=gym?!!(s&&s.finished):!!ex[agKey(it)];
+    const sub=gym?(s&&trained(s)?"Treino "+s.letter+" · "+PLAN[s.letter].name:(d>=1&&d<=5?"Treino "+LET[d-1]+" · "+PLAN[LET[d-1]].name:"")):"";
+    return`<div class="ag ${done?"done":""}"><span class="tm">${esc(it.h)}</span><span class="ico">${agIcon(it.t)}</span><span class="act">${esc(it.t)}${sub?`<small>${sub}</small>`:""}</span>${editable?(gym?`<span class="tick ${done?"on":""}" title="Marca sozinho quando você termina o treino">✓</span>`:`<button type="button" class="tick ${done?"on":""}" data-extra="${i}" aria-label="Marcar ${esc(it.t)} como feito">✓</button>`):(done?`<span class="tick on">✓</span>`:"")}</div>`}).join("")}
+function agendaToday(){const u=DB.me,d=parse(TODAY).getDay(),items=agendaOf(u)[d]||[];
+  if(!items.length)return Object.keys(agendaOf(u)).length?`<div class="agenda"><div class="ah"><h3>Agenda de hoje</h3><button type="button" id="goeu">Ver semana</button></div><span class="muted">Nada marcado para hoje. Bom descanso!</span></div>`:"";
+  return`<div class="agenda"><div class="ah"><h3>Agenda de hoje</h3><button type="button" id="goeu">Ver semana</button></div>${agendaRows(u,TODAY,true)}</div>`}
+function vEu(){const u=DB.me,ag=agendaOf(u),order=[1,2,3,4,5,6,0];
+  return`<div><h2>Minha agenda</h2><div class="muted">${esc(USERS[u]||"")} · sua semana de exercícios</div></div>
+  <div class="agenda week">${order.filter(d=>(ag[d]||[]).length).map(d=>`<h4>${DIAS[d]}</h4>${ag[d].map((it,i)=>`<div class="ag"><span class="tm">${esc(it.h)}</span><span class="ico">${agIcon(it.t)}</span><span class="act">${esc(it.t)}</span><button type="button" class="del" data-agdel="${d}:${i}" aria-label="Remover ${esc(it.t)} de ${DIAS[d]}">✕</button></div>`).join("")}`).join("")||`<span class="muted">Nenhum horário ainda. Adicione abaixo.</span>`}</div>
+  <form class="card" id="agform"><h3>Adicionar horário</h3><div class="addag">
+  <select id="ag-dia" aria-label="Dia">${order.map(d=>`<option value="${d}">${DIAS[d]}</option>`).join("")}</select>
+  <input id="ag-h" placeholder="Horário (ex.: 06:00)" aria-label="Horário">
+  <input id="ag-t" class="full" list="ag-sug" placeholder="Atividade (ex.: Corrida)" aria-label="Atividade"><datalist id="ag-sug"><option value="Academia"><option value="Corrida"><option value="Yoga"><option value="Bike"><option value="Natação"><option value="Futebol"></datalist>
+  <button type="submit" class="btn full">Adicionar</button></div></form>
+  ${accountCard()}`}
+
 /* ---------- aparência ---------- */
 const hx=c=>{c=c.replace("#","");if(c.length===3)c=c.split("").map(x=>x+x).join("");return[0,2,4].map(i=>parseInt(c.slice(i,i+2),16))};
 const toHex=a=>"#"+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
@@ -370,7 +413,7 @@ function vCal(){
   const sel=U(u).sessions[st.sel];
   let det=`<div class="detail"><b>${SEM[parse(st.sel).getDay()]}, ${br(st.sel)}</b>`;
   if(trained(sel)){det+=`<span class="muted" style="font-size:13px">Treino ${sel.letter} · ${PLAN[sel.letter].name}</span>`+exList(sel.letter).map(e=>{const n=(sel.done?.[e.id]||[]).filter(Boolean).length;return`<div class="li"><span>${esc(e.name)}</span><b>${sel.weights?.[e.id]?fmt(sel.weights[e.id])+" kg":""} <span class="muted">${n}/${e.sets}</span></b></div>`}).join("")}
-  else det+=`<span class="muted">Nenhum treino neste dia.</span>`;det+=`</div>`;
+  else det+=`<span class="muted">Nenhum treino neste dia.</span>`;{const ag=agendaOf(u)[parse(st.sel).getDay()]||[];const ex=extrasOf(u,st.sel);const done=ag.filter(it=>!isGym(it.t)&&ex[agKey(it)]);if(done.length)det+=`<span class="muted" style="font-size:13px;margin-top:6px">Também fez: ${done.map(it=>agIcon(it.t)+" "+esc(it.t)).join(", ")}</span>`}det+=`</div>`;
   return`${ro?roBanner():""}<div><h2>Calendário</h2><div class="muted">${USERS[u]}</div></div>
   <div class="stats"><div class="stat"><b>${monthCount(u,y,m)}</b><span>treinos em ${MES[m].slice(0,3)}</span></div><div class="stat"><b>${streak(u)}</b><span>semanas com 3+</span></div><div class="stat"><b>${Object.values(U(u).sessions).filter(trained).length}</b><span>no total</span></div></div>
   <div class="cal"><div class="calnav"><button type="button" data-mon="-1" aria-label="Mês anterior">‹</button><b>${MES[m]} ${y}</b><button type="button" data-mon="1" aria-label="Próximo mês">›</button></div>
@@ -394,7 +437,7 @@ function vDupla(){
   const data=us.map(u=>({u,mc:monthCount(u,y,m),sk:streak(u),last:lastSession(u),vol:weekVolume(u),pr:prs(u)}));
   const cards=data.map(d=>`<div class="person" style="--c:${UCOL[d.u]}"><div class="av"><b>${USERS[d.u][0]}</b><span>${USERS[d.u]}${d.u===DB.me?" (você)":""}</span></div>
     <div class="kv"><b>${d.mc}</b><span>treinos em ${MES[m]}</span></div><div class="kv"><b>${d.sk}</b><span>semanas seguidas</span></div>
-    <div class="kv"><b style="font-size:20px">${d.last?d.last.s.letter+" · "+br(d.last.k):"–"}</b><span>último treino</span></div></div>`).join("");
+    <div class="kv"><b style="font-size:20px">${d.last?d.last.s.letter+" · "+br(d.last.k):"–"}</b><span>último treino</span></div>${(agendaOf(d.u)[parse(TODAY).getDay()]||[]).length?`<div class="kv"><b style="font-size:16px;font-family:var(--body);line-height:1.5">${agendaOf(d.u)[parse(TODAY).getDay()].map(it=>agIcon(it.t)+" "+esc(it.h)).join("<br>")}</b><span>agenda de hoje</span></div>`:""}</div>`).join("");
   if(us.length<2)return`<div><h2>Dupla</h2></div><div class="card"><h3>Falta o parceiro</h3><p>Quando o Juliano abrir o app e criar a conta dele, vocês aparecem lado a lado aqui.</p><p class="muted">Mande para ele o endereço do app. Ele toca em Compartilhar e depois em "Adicionar à Tela de Início".</p></div>`;
   const a=data[0],b=data[1];const cmp=(x,y,lab,f=v=>v)=>`<div class="vs"><b class="${x>y?"win":""}">${f(x)}</b><small>${lab}</small><b class="${y>x?"win":""}">${f(y)}</b></div>`;
   const lwA=lastWeight(us[0],st.cmp,"9999"),lwB=lastWeight(us[1],st.cmp,"9999");
@@ -418,17 +461,20 @@ function render(){
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button type="button" data-tab="${k}" class="${st.tab===k?"on":""}"><svg viewBox="0 0 24 24">${ICONS[k]}</svg>${l}</button>`).join("");
   const banner=hasDemo()?`<div class="demo"><span>Treinos de exemplo para você ver como fica.</span><button type="button" id="cleardemo">Apagar exemplos</button></div>`:"";
   $("#gear").classList.toggle("on",st.tab==="ajustes");
-  $("#view").innerHTML=(st.tab==="ajustes"?"":banner)+({hoje:vHoje,cal:vCal,prog:vProg,dupla:vDupla,ajustes:vAjustes}[st.tab])();
+  $("#view").innerHTML=(st.tab==="ajustes"||st.tab==="eu"?"":banner)+({hoje:vHoje,cal:vCal,prog:vProg,dupla:vDupla,ajustes:vAjustes,eu:vEu}[st.tab])();
 }
 document.addEventListener("click",ev=>{
   const t=ev.target.closest("button");if(!t||!DB.me)return;const D=t.dataset;
   if(D.tab){st.tab=D.tab;st.view=null;render();scrollTo(0,0);return}
   if(D.me){DB.me=D.me;st.view=null;st.letter=null;save();render();toast("Agora você é "+USERS[D.me]);return}
   if(t.id==="cleardemo")return clearDemo();
-  if(t.id==="menu"){st.tab="ajustes";st.view=null;render();scrollTo(0,0);return}
+  if(t.id==="menu"){st.tab="eu";st.view=null;render();scrollTo(0,0);return}
   if(t.id==="logout"){window.FB.logout();return}
   if(D.pal){DB.look.pal=D.pal;save();render();return}
   if(D.logo){DB.look.logo=D.logo;save();render();return}
+  if(t.id==="goeu"){st.tab="eu";render();scrollTo(0,0);return}
+  if(D.extra!==undefined&&D.extra!==""&&!D.agdel){const it=(agendaOf(DB.me)[parse(TODAY).getDay()]||[])[+D.extra];if(it){const x=U(DB.me);x.extras=x.extras||{};const m=x.extras[TODAY]=x.extras[TODAY]||{};m[agKey(it)]=!m[agKey(it)];if(!m[agKey(it)])delete m[agKey(it)];save();render();if(m[agKey(it)])toast(it.t+" feito! 💪")}return}
+  if(D.agdel){const[d,i]=D.agdel.split(":");const ag=agendaOf(DB.me);ag[d].splice(+i,1);if(!ag[d].length)delete ag[d];save();render();return}
   if(t.id==="gear"){st.tab=st.tab==="ajustes"?"hoje":"ajustes";st.view=null;render();scrollTo(0,0);return}
   if(t.id==="back"){st.view=null;render();return}
   if(D.see){st.view=D.see;st.tab="cal";render();scrollTo(0,0);return}
@@ -452,7 +498,8 @@ document.addEventListener("change",ev=>{const t=ev.target;
   if(t.id==="cmp-ex"){st.cmp=t.value;render();return}
   if(t.id==="photo-in"&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas"),s=Math.min(1,480/Math.max(img.width,img.height));c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);U(DB.me).photos.push({date:TODAY,src:c.toDataURL("image/jpeg",.75)});save();render();toast("Foto salva")};img.src=fr.result};fr.readAsDataURL(t.files[0])}
 });
-document.addEventListener("submit",ev=>{ev.preventDefault();if(ev.target.id==="bwform"){const v=parseFloat(String($("#bw-in").value).replace(",","."));if(!(v>0))return toast("Digite o peso em kg");const b=U(DB.me).body.filter(x=>x.date!==TODAY);b.push({date:TODAY,kg:v});U(DB.me).body=b;save();render();toast("Peso salvo")}});
+document.addEventListener("submit",ev=>{ev.preventDefault();
+  if(ev.target.id==="agform"){const d=$("#ag-dia").value,hh=$("#ag-h").value.trim(),tt=$("#ag-t").value.trim();if(!hh||!tt)return toast("Preencha o horário e a atividade");const ag=agendaOf(DB.me);(ag[d]=ag[d]||[]).push({h:hh,t:tt});ag[d].sort((a,b)=>a.h.localeCompare(b.h));save();render();toast("Adicionado em "+DIAS[d]);return}if(ev.target.id==="bwform"){const v=parseFloat(String($("#bw-in").value).replace(",","."));if(!(v>0))return toast("Digite o peso em kg");const b=U(DB.me).body.filter(x=>x.date!==TODAY);b.push({date:TODAY,kg:v});U(DB.me).body=b;save();render();toast("Peso salvo")}});
 try{applyLook()}catch(e){}
 </script>
 <script type="module">
