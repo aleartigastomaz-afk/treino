@@ -623,7 +623,9 @@ const MSG={"auth/invalid-credential":"E-mail ou senha errados.","auth/wrong-pass
 $("#authform").onsubmit=async ev=>{ev.preventDefault();$("#a-err").hidden=true;const e=$("#a-email").value.trim().toLowerCase(),p=$("#a-pass").value;
   try{if(mode==="signup"){const n=$("#a-name").value.trim();if(!n)throw{code:"x",message:"Digite seu nome."};window.pendingName=n;await createUserWithEmailAndPassword(auth,e,p)}else await signInWithEmailAndPassword(auth,e,p)}
   catch(err){$("#a-err").hidden=false;$("#a-err").textContent=MSG[err.code]||err.message||"Algo deu errado."}};
-if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator){let reloaded=false;const hadCtl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadCtl&&!reloaded){reloaded=true;location.reload()}});
+  navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(reg=>{reg.update();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update()})}).catch(()=>{});}
 </script>
 
 </body>
