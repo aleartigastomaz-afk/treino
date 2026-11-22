@@ -430,7 +430,7 @@ const hms=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60)
 const paceS=(m,s)=>{if(!m)return"–";const p=s/(m/1000);return Math.floor(p/60)+":"+pad(Math.round(p%60)%60)+"/km"};
 const runLine=r=>kmS(r.dist)+" · "+hms(r.time)+" · "+paceS(r.dist,r.time);
 function stravaCard(u,ro){const R=RUNS[u]||{};const S=window.STRAVA||{};
-  if(!R.connected){if(ro)return"";return`<div class="card"><h3>Corridas · Strava</h3><span>Ligue o Strava (que já recebe do seu Garmin) e as corridas entram sozinhas no app, com distância, tempo e pace.</span>${S.ready?`<button type="button" class="btn" id="stconnect" style="background:#fc4c02;color:#fff">Conectar com Strava</button>`:`<span class="muted" style="font-size:12px">Falta terminar a configuração do Strava.</span>`}</div>`}
+  if(!R.connected){if(ro||!S.ready)return"";return`<div class="card"><h3>Corridas · Strava</h3><span>Ligue o Strava (que já recebe do seu Garmin) e as corridas entram sozinhas no app, com distância, tempo e pace.</span>${S.ready?`<button type="button" class="btn" id="stconnect" style="background:#fc4c02;color:#fff">Conectar com Strava</button>`:`<span class="muted" style="font-size:12px">Falta terminar a configuração do Strava.</span>`}</div>`}
   const all=Object.values(R.runs||{}).sort((a,b)=>(a.date+a.hour)<(b.date+b.hour)?1:-1);
   const lim=ymd(new Date(parse(TODAY).getTime()-29*864e5)),m30=all.filter(r=>r.date>=lim);
   const km=m30.reduce((a,r)=>a+r.dist,0),tm=m30.reduce((a,r)=>a+r.time,0);
