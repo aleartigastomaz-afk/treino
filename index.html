@@ -187,7 +187,7 @@ nav.tabs button.on svg{stroke:var(--accent)}
 .ag .ico{width:34px;height:34px;border-radius:10px;background:var(--panel2);display:grid;place-items:center;font-size:18px;flex:none}
 .ag .tick{flex:none;width:36px;height:36px;border-radius:10px;border:2px solid var(--line);background:none;color:transparent;font-size:18px;display:grid;place-items:center}
 .ag .tick.on{background:var(--ok);border-color:var(--ok);color:#0d1422}
-.ag.done .act{color:var(--muted);text-decoration:line-through}
+.ag.done .act{color:var(--muted)}
 .ag .del{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:none;color:var(--muted);font-size:16px}
 .week h4{margin:10px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .addag{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -349,6 +349,8 @@ window.onData=(uid,all)=>{
 document.addEventListener("focusout",()=>{if(pendingRender){pendingRender=false;setTimeout(render,50)}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){const t=ymd(new Date());if(t!==TODAY){TODAY=t;st.sel=t;st.letter=null;if(DB.me)render()}}});
 window.showAuth=()=>{DB.me=null;$("#auth").hidden=false};
+window.toastMsg=t=>toast(t);
+window.onRuns=(uid,all)=>{RUNS=all;window.onRunsMine&&window.onRunsMine(uid,all[uid]);if(!DB.me)return;const a=document.activeElement;if(a&&a.tagName==="INPUT"&&$("#view").contains(a)){pendingRender=true;return}render()};
 const U=u=>DB.users[u];
 const hasDemo=()=>false;
 function clearDemo(){Object.values(DB.users).forEach(x=>{for(const k in x.sessions)if(x.sessions[k].demo)delete x.sessions[k];x.body=x.body.filter(b=>!b.demo)});save();render();toast("Exemplos apagados")}
@@ -419,6 +421,25 @@ function vHoje(){
   h+=`<button type="button" class="big ${fin?"ghost":""}" id="finish">${fin?"Treino concluído ✓":"Terminar treino"}</button>
   <div class="tips">Toque no número da série quando terminar: o cronômetro de descanso começa sozinho. O peso da última vez já vem preenchido.</div>`;
   return h}
+/* ---------- corridas (Strava) ---------- */
+let RUNS={};
+const isRun=t=>/corr/i.test(t);
+const runsOn=(u,k)=>Object.values((RUNS[u]||{}).runs||{}).filter(r=>r.date===k).sort((a,b)=>a.hour<b.hour?-1:1);
+const kmS=m=>fmt(Math.round(m/10)/100)+" km";
+const hms=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?h+":"+pad(m)+":"+pad(x):m+":"+pad(x)};
+const paceS=(m,s)=>{if(!m)return"–";const p=s/(m/1000);return Math.floor(p/60)+":"+pad(Math.round(p%60)%60)+"/km"};
+const runLine=r=>kmS(r.dist)+" · "+hms(r.time)+" · "+paceS(r.dist,r.time);
+function stravaCard(u,ro){const R=RUNS[u]||{};const S=window.STRAVA||{};
+  if(!R.connected){if(ro)return"";return`<div class="card"><h3>Corridas · Strava</h3><span>Ligue o Strava (que já recebe do seu Garmin) e as corridas entram sozinhas no app, com distância, tempo e pace.</span>${S.ready?`<button type="button" class="btn" id="stconnect" style="background:#fc4c02;color:#fff">Conectar com Strava</button>`:`<span class="muted" style="font-size:12px">Falta terminar a configuração do Strava.</span>`}</div>`}
+  const all=Object.values(R.runs||{}).sort((a,b)=>(a.date+a.hour)<(b.date+b.hour)?1:-1);
+  const lim=ymd(new Date(parse(TODAY).getTime()-29*864e5)),m30=all.filter(r=>r.date>=lim);
+  const km=m30.reduce((a,r)=>a+r.dist,0),tm=m30.reduce((a,r)=>a+r.time,0);
+  return`<div class="card"><div class="row" style="justify-content:space-between"><h3>Corridas · Strava</h3>${ro?"":`<button type="button" class="linkbtn" id="stsync" style="padding:0">Atualizar</button>`}</div>
+  <div class="stats"><div class="stat"><b>${fmt(Math.round(km/100)/10)}</b><span>km em 30 dias</span></div><div class="stat"><b>${m30.length}</b><span>corridas</span></div><div class="stat"><b style="font-size:24px">${m30.length?paceS(km,tm).replace("/km",""):"–"}</b><span>pace médio</span></div></div>
+  ${lineChart([{color:"#fc4c02",data:all.slice(0,20).reverse().map(r=>({date:r.date,kg:Math.round(r.dist/10)/100}))}],{h:140,unit:"km"})}
+  ${all.slice(0,6).map(r=>`<div class="pr"><span>🏃 ${esc(r.name||"Corrida")}<br><span class="muted" style="font-size:12px">${br(r.date)} · ${r.hour||""}${r.hr?` · ❤️ ${Math.round(r.hr)}`:""}</span></span><b>${kmS(r.dist)}<br><span class="muted" style="font-size:12px;font-weight:500">${hms(r.time)} · ${paceS(r.dist,r.time)}</span></b></div>`).join("")||`<p class="muted">Nenhuma corrida nos últimos 90 dias.</p>`}
+  ${R.lastSync?`<span class="muted" style="font-size:12px">Atualizado ${new Date(R.lastSync).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}${ro?"":` · <button type="button" class="linkbtn" id="stdisc" style="padding:0;font-size:12px">desconectar</button>`}</span>`:""}</div>`}
+
 /* ---------- agenda ---------- */
 const DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
 const AG_ALEX={"1":[{h:"06:00",t:"Academia"},{h:"07:30–08:00",t:"Corrida"}],"2":[{h:"06:00",t:"Academia"}],"3":[{h:"06:00",t:"Academia"},{h:"07:30",t:"Yoga"},{h:"Fim de tarde",t:"Corrida"}],"4":[{h:"06:00",t:"Academia"}],"5":[{h:"06:00",t:"Academia"},{h:"07:30–08:00",t:"Corrida"}]};
@@ -428,14 +449,14 @@ const agIcon=t=>/corr/i.test(t)?"🏃":/yoga/i.test(t)?"🧘":isGym(t)?"🏋️"
 const agKey=it=>it.h+"|"+it.t;
 const extrasOf=(u,k)=>((U(u).extras||{})[k])||{};
 function agendaRows(u,k,editable){const d=parse(k).getDay(),items=(agendaOf(u)[d]||[]),s=U(u).sessions[k],ex=extrasOf(u,k);
-  return items.map((it,i)=>{const gym=isGym(it.t),done=gym?!!(s&&s.finished):!!ex[agKey(it)];
-    const sub=gym?(s&&trained(s)?"Treino "+s.letter+" · "+PLAN[s.letter].name:(d>=1&&d<=5?"Treino "+LET[d-1]+" · "+PLAN[LET[d-1]].name:"")):"";
-    return`<div class="ag ${done?"done":""}"><span class="tm">${esc(it.h)}</span><span class="ico">${agIcon(it.t)}</span><span class="act">${esc(it.t)}${sub?`<small>${sub}</small>`:""}</span>${editable?(gym?`<span class="tick ${done?"on":""}" title="Marca sozinho quando você termina o treino">✓</span>`:`<button type="button" class="tick ${done?"on":""}" data-extra="${i}" aria-label="Marcar ${esc(it.t)} como feito">✓</button>`):(done?`<span class="tick on">✓</span>`:"")}</div>`}).join("")}
+  return items.map((it,i)=>{const gym=isGym(it.t),rr=isRun(it.t)?runsOn(u,k):[],done=itemDone(u,k,it);
+    const sub=gym?(s&&trained(s)?"Treino "+s.letter+" · "+PLAN[s.letter].name:(d>=1&&d<=5?"Treino "+LET[d-1]+" · "+PLAN[LET[d-1]].name:"")):rr.length?"Strava: "+rr.map(runLine).join(" + "):"";
+    return`<div class="ag ${done?"done":""}"><span class="tm">${esc(it.h)}</span><span class="ico">${agIcon(it.t)}</span><span class="act">${esc(it.t)}${sub?`<small>${sub}</small>`:""}</span>${editable?(gym||rr.length?`<span class="tick ${done?"on":""}" title="Marca sozinho">✓</span>`:`<button type="button" class="tick ${done?"on":""}" data-extra="${i}" aria-label="Marcar ${esc(it.t)} como feito">✓</button>`):(done?`<span class="tick on">✓</span>`:"")}</div>`}).join("")}
 function agendaToday(){const u=DB.me,d=parse(TODAY).getDay(),items=agendaOf(u)[d]||[];
   if(!items.length)return Object.keys(agendaOf(u)).length?`<div class="agenda"><div class="ah"><h3>Agenda de hoje</h3><button type="button" id="goeu">Ver semana</button></div><span class="muted">Nada marcado para hoje. Bom descanso!</span></div>`:"";
   return`<div class="agenda"><div class="ah"><h3>Agenda de hoje</h3><button type="button" id="goeu">Ver semana</button></div>${agendaRows(u,TODAY,true)}</div>`}
 function weekDates(){const t=parse(TODAY),mon=new Date(t);mon.setDate(t.getDate()-((t.getDay()+6)%7));return[0,1,2,3,4,5,6].map(i=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return ymd(d)})}
-function itemDone(u,k,it){if(isGym(it.t)){const s=U(u).sessions[k];return!!(s&&s.finished)}return!!extrasOf(u,k)[agKey(it)]}
+function itemDone(u,k,it){if(isGym(it.t)){const s=U(u).sessions[k];return!!(s&&s.finished)}if(isRun(it.t)&&runsOn(u,k).length)return true;return!!extrasOf(u,k)[agKey(it)]}
 function itemMin(h){if(/fim de tarde|tarde/i.test(h))return 17*60+30;if(/noite/i.test(h))return 19*60+30;if(/manh/i.test(h))return 7*60;const m=String(h).match(/(\d{1,2})[:h]?(\d{2})?/);return m?(+m[1])*60+(+(m[2]||0)):24*60}
 function nextItem(u){const ag=agendaOf(u),now=new Date(),nm=now.getHours()*60+now.getMinutes();
   for(let off=0;off<8;off++){const d=new Date(parse(TODAY));d.setDate(d.getDate()+off);const k=ymd(d),items=(ag[d.getDay()]||[]).map((it,i)=>({it,i,m:itemMin(it.h)})).sort((a,b)=>a.m-b.m);
@@ -450,8 +471,8 @@ function vAgenda(){const u=DB.me,ag=agendaOf(u),wk=weekDates();if(!st.agSel||!wk
   const strip=`<div class="strip">${wk.map(d=>{const dd=parse(d),items=ag[dd.getDay()]||[];return`<button type="button" class="gl ${d===k?"sel":""} ${d===TODAY?"td":""}" data-agsel="${d}"><span>${DIAS[dd.getDay()].slice(0,3)}</span><b>${dd.getDate()}</b><i>${items.slice(0,4).map(it=>`<u class="${itemDone(u,d,it)?"d":""}"></u>`).join("")}</i></button>`}).join("")}</div>`;
   const items=(ag[dow]||[]).map((it,i)=>({it,i})).sort((a,b)=>itemMin(a.it.h)-itemMin(b.it.h));
   const future=k>TODAY,s=U(u).sessions[k];
-  const tl=items.length?`<div class="tl">${items.map(({it,i})=>{const gym=isGym(it.t),done=itemDone(u,k,it);const sub=gym?(s&&trained(s)?"Treino "+s.letter+" · "+PLAN[s.letter].name:(dow>=1&&dow<=5?"Treino "+LET[dow-1]+" · "+PLAN[LET[dow-1]].name:"")):(done?"Feito ✓":"");
-      const right=st.agEdit?`<button type="button" class="del" data-agdel="${dow}:${i}" aria-label="Remover ${esc(it.t)}">✕</button>`:gym?`<span class="tick ${done?"on":""}" title="Marca sozinho ao terminar o treino">✓</span>`:`<button type="button" class="tick ${done?"on":""}" data-ex="${k}|${i}" ${future?"disabled":""} aria-label="Marcar ${esc(it.t)} como feito">✓</button>`;
+  const tl=items.length?`<div class="tl">${items.map(({it,i})=>{const gym=isGym(it.t),done=itemDone(u,k,it),rr=isRun(it.t)?runsOn(u,k):[];const sub=rr.length?"Strava: "+rr.map(runLine).join(" + "):gym?(s&&trained(s)?"Treino "+s.letter+" · "+PLAN[s.letter].name:(dow>=1&&dow<=5?"Treino "+LET[dow-1]+" · "+PLAN[LET[dow-1]].name:"")):(done?"Feito ✓":"");
+      const right=st.agEdit?`<button type="button" class="del" data-agdel="${dow}:${i}" aria-label="Remover ${esc(it.t)}">✕</button>`:gym||rr.length?`<span class="tick ${done?"on":""}" title="Marca sozinho">✓</span>`:`<button type="button" class="tick ${done?"on":""}" data-ex="${k}|${i}" ${future?"disabled":""} aria-label="Marcar ${esc(it.t)} como feito">✓</button>`;
       return`<div class="tl-row"><span class="tl-time">${esc(it.h)}</span><div class="gl tl-card ${done?"done":""}"><span class="ico">${agIcon(it.t)}</span><span class="act">${esc(it.t)}${sub?`<small>${sub}</small>`:""}</span>${right}</div></div>`}).join("")}</div>`
     :`<div class="gl tl-empty">${DIAS[dow]} livre. Dia de descanso 😌</div>`;
   const tot={};wk.forEach(d=>{(ag[parse(d).getDay()]||[]).forEach(it=>{const t=agTypes(it.t);tot[t]=tot[t]||{d:0,n:0};tot[t].n++;if(itemDone(u,d,it))tot[t].d++})});
@@ -507,7 +528,7 @@ function vCal(){
   const sel=U(u).sessions[st.sel];
   let det=`<div class="detail"><b>${SEM[parse(st.sel).getDay()]}, ${br(st.sel)}</b>`;
   if(trained(sel)){det+=`<span class="muted" style="font-size:13px">Treino ${sel.letter} · ${PLAN[sel.letter].name}</span>`+exList(sel.letter).map(e=>{const n=(sel.done?.[e.id]||[]).filter(Boolean).length;return`<div class="li"><span>${esc(e.name)}</span><b>${sel.weights?.[e.id]?fmt(sel.weights[e.id])+" kg":""} <span class="muted">${n}/${e.sets}</span></b></div>`}).join("")}
-  else det+=`<span class="muted">Nenhum treino neste dia.</span>`;{const ag=agendaOf(u)[parse(st.sel).getDay()]||[];const ex=extrasOf(u,st.sel);const done=ag.filter(it=>!isGym(it.t)&&ex[agKey(it)]);if(done.length)det+=`<span class="muted" style="font-size:13px;margin-top:6px">Também fez: ${done.map(it=>agIcon(it.t)+" "+esc(it.t)).join(", ")}</span>`}det+=`</div>`;
+  else det+=`<span class="muted">Nenhum treino neste dia.</span>`;{const ag=agendaOf(u)[parse(st.sel).getDay()]||[];const ex=extrasOf(u,st.sel);const done=ag.filter(it=>!isGym(it.t)&&ex[agKey(it)]);const rr=runsOn(u,st.sel);if(rr.length)det+=rr.map(r=>`<div class="li"><span>🏃 ${esc(r.name||"Corrida")} (Strava)</span><b>${runLine(r)}</b></div>`).join("");if(done.length)det+=`<span class="muted" style="font-size:13px;margin-top:6px">Também fez: ${done.map(it=>agIcon(it.t)+" "+esc(it.t)).join(", ")}</span>`}det+=`</div>`;
   return`${ro?roBanner():""}<div><h2>Calendário</h2><div class="muted">${USERS[u]}</div></div>
   <div class="stats"><div class="stat"><b>${monthCount(u,y,m)}</b><span>treinos em ${MES[m].slice(0,3)}</span></div><div class="stat"><b>${streak(u)}</b><span>semanas com 3+</span></div><div class="stat"><b>${Object.values(U(u).sessions).filter(trained).length}</b><span>no total</span></div></div>
   <div class="cal"><div class="calnav"><button type="button" data-mon="-1" aria-label="Mês anterior">‹</button><b>${MES[m]} ${y}</b><button type="button" data-mon="1" aria-label="Próximo mês">›</button></div>
@@ -521,7 +542,7 @@ function vProg(){
   let h=`${ro?roBanner():""}<div><h2>Progresso</h2><div class="muted">${USERS[u]}</div></div>
   <div class="card"><h3>Evolução da carga</h3><select id="prog-ex" aria-label="Exercício">${exOptions(st.prog)}</select>${lineChart([{color:UCOL[u],data:history(u,st.prog)}])}<span class="muted" style="font-size:12px">${e.sets} séries × ${e.reps} · Treino ${e.id[0]}</span></div>
   <div class="card"><h3>Recordes pessoais 🏆</h3>${P.news.length?P.news.slice(0,6).map(p=>`<div class="pr"><span>${esc(exById(p.id).name)}<br><span class="muted" style="font-size:12px">${br(p.date)} · antes ${fmt(p.from)} kg</span></span><b>${fmt(p.kg)} kg</b></div>`).join(""):`<p class="muted">Quando você bater o seu maior peso em um exercício, ele aparece aqui.</p>`}</div>
-  <div class="card"><h3>Peso corporal</h3>${lineChart([{color:"var(--gold)",data:bw}],{h:140})}${ro?"":`<form class="inline" id="bwform"><input id="bw-in" type="number" step="0.1" inputmode="decimal" placeholder="Seu peso hoje (kg)" aria-label="Peso corporal"><button type="submit">Salvar</button></form>`}</div>
+  ${stravaCard(u,ro)}<div class="card"><h3>Peso corporal</h3>${lineChart([{color:"var(--gold)",data:bw}],{h:140})}${ro?"":`<form class="inline" id="bwform"><input id="bw-in" type="number" step="0.1" inputmode="decimal" placeholder="Seu peso hoje (kg)" aria-label="Peso corporal"><button type="submit">Salvar</button></form>`}</div>
   <div class="card"><h3>Fotos de evolução</h3>${U(u).photos.length?`<div class="photos">${U(u).photos.map(p=>`<figure><img src="${p.src}" alt="Foto de ${br(p.date)}"><figcaption>${br(p.date)}</figcaption></figure>`).join("")}</div>`:`<p class="muted">Uma foto por mês, sempre no mesmo lugar e com a mesma luz, mostra bem a mudança.</p>`}${ro?"":`<label class="file">+ Adicionar foto<input type="file" accept="image/*" id="photo-in"></label>`}</div>
   <div class="card"><h3>Ciclos</h3><div class="pr"><span><b>Ciclo 1 · ABCDE</b><br><span class="muted" style="font-size:12px">21/11/2026 a 21/02/2027 · em andamento</span></span><b class="muted">atual</b></div><div class="pr"><span class="muted">Ciclo 2 · opções de treino novo chegam em fevereiro para vocês escolherem</span></div></div>`;
   return h}
@@ -568,6 +589,9 @@ document.addEventListener("click",ev=>{
   if(D.pal){DB.look.pal=D.pal;save();render();return}
   if(D.logo){DB.look.logo=D.logo;save();render();return}
   if(t.id==="goeu"){st.tab="agenda";render();scrollTo(0,0);return}
+  if(t.id==="stconnect"){window.FB&&window.FB.stravaConnect();return}
+  if(t.id==="stsync"){if(window.FB){toast("Buscando corridas...");window.FB.stravaSync(true)}return}
+  if(t.id==="stdisc"){if(t.dataset.sure){window.FB&&window.FB.stravaDisconnect()}else{t.dataset.sure="1";t.textContent="toque de novo para desconectar"}return}
   if(t.id==="agedit"){st.agEdit=!st.agEdit;render();return}
   if(D.agsel){st.agSel=D.agsel;render();return}
   if(D.ex){const[k,i]=D.ex.split("|");const it=(agendaOf(DB.me)[parse(k).getDay()]||[])[+i];if(it){const x=U(DB.me);x.extras=x.extras||{};const m=x.extras[k]=x.extras[k]||{};m[agKey(it)]=!m[agKey(it)];if(!m[agKey(it)])delete m[agKey(it)];save();render();if(m[agKey(it)])toast(it.t+" feito! 💪")}return}
@@ -604,15 +628,25 @@ try{applyLook()}catch(e){}
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {initializeFirestore,persistentLocalCache,doc,setDoc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {firebaseConfig} from "./firebase-config.js";
+import {firebaseConfig,strava} from "./firebase-config.js";
 const $=s=>document.querySelector(s);
 if(!firebaseConfig.apiKey||firebaseConfig.apiKey.startsWith("COLE")){$("#auth").hidden=false;$("#authmsg").textContent="Falta ligar o app ao Firebase (arquivo firebase-config.js).";$("#authform").hidden=true;$("#a-toggle").hidden=true;throw new Error("sem config")}
 const app=initializeApp(firebaseConfig),auth=getAuth(app);
 const db=initializeFirestore(app,{localCache:persistentLocalCache()});
-window.FB={save:data=>setDoc(doc(db,"atletas",auth.currentUser.uid),data),logout:()=>signOut(auth)};
-let unsub=null;
+window.STRAVA={ready:!!(strava&&strava.clientId&&strava.fnUrl)};
+async function stCall(action,code){const t=await auth.currentUser.getIdToken();const r=await fetch(strava.fnUrl,{method:"POST",headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify({action,code})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Erro "+r.status);return j}
+let lastAuto=0;
+window.FB={save:data=>setDoc(doc(db,"atletas",auth.currentUser.uid),data),logout:()=>signOut(auth),
+  stravaConnect:()=>{const redir=location.origin+location.pathname;location.href="https://www.strava.com/oauth/authorize?client_id="+strava.clientId+"&response_type=code&approval_prompt=auto&scope=activity:read_all&state=treino&redirect_uri="+encodeURIComponent(redir)},
+  stravaSync:async(manual)=>{try{const j=await stCall("sync");if(manual)window.toastMsg&&window.toastMsg(j.count!=null?j.count+" corridas sincronizadas":"Strava não conectado")}catch(e){if(manual)window.toastMsg&&window.toastMsg("Não consegui falar com o Strava: "+e.message)}},
+  stravaDisconnect:async()=>{try{await stCall("disconnect");window.toastMsg&&window.toastMsg("Strava desconectado")}catch(e){window.toastMsg&&window.toastMsg(e.message)}}};
+window.onRunsMine=(me,R)=>{if(!window.STRAVA.ready||!R||!R.connected)return;if(Date.now()-lastAuto<10*60e3)return;if(R.lastSync&&Date.now()-R.lastSync<10*60e3)return;lastAuto=Date.now();window.FB.stravaSync(false)};
+let unsub=null,unsubR=null;
 onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}
   if(!u){window.showAuth();return}
+  const q=new URLSearchParams(location.search);if(q.get("state")==="treino"&&(q.get("code")||q.get("error"))){history.replaceState(null,"",location.pathname);if(q.get("code")){window.toastMsg&&window.toastMsg("Conectando ao Strava...");stCall("connect",q.get("code")).then(j=>window.toastMsg&&window.toastMsg("Strava conectado! "+(j.count||0)+" corridas")).catch(e=>window.toastMsg&&window.toastMsg("Strava: "+e.message))}}
+  if(unsubR){unsubR();unsubR=null}
+  unsubR=onSnapshot(collection(db,"corridas"),snap=>{const all={};snap.forEach(d=>all[d.id]=d.data());window.onRuns(u.uid,all)},()=>{});
   unsub=onSnapshot(collection(db,"atletas"),snap=>{const all={};snap.forEach(d=>all[d.id]=d.data());window.onData(u.uid,all)},
     err=>{$("#auth").hidden=false;$("#a-err").hidden=false;$("#a-err").textContent="Sua conta ainda não tem permissão. Peça para liberar o seu e-mail.";signOut(auth)});
 });

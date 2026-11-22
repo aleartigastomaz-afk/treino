@@ -7,3 +7,9 @@ export const firebaseConfig = {
   messagingSenderId: "204116127730",
   appId: "1:204116127730:web:43bc759b6fc0bdee67856b"
 };
+
+// Strava: clientId é público; fnUrl é o endereço do servidor no Google Cloud.
+export const strava = {
+  clientId: "",
+  fnUrl: ""
+};
