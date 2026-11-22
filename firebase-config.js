@@ -8,8 +8,10 @@ export const firebaseConfig = {
   appId: "1:204116127730:web:43bc759b6fc0bdee67856b"
 };
 
-// Strava: clientId é público; fnUrl é o endereço do servidor no Google Cloud.
+// Strava: clientId é público. tokenUrl = servidor grátis no Cloudflare
+// (ou fnUrl = servidor no Google Cloud, se um dia usar o plano Blaze).
 export const strava = {
   clientId: "",
+  tokenUrl: "",
   fnUrl: ""
 };

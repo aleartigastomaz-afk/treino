@@ -358,7 +358,7 @@ function clearDemo(){Object.values(DB.users).forEach(x=>{for(const k in x.sessio
 /* ---------- consultas ---------- */
 const trained=s=>s&&(s.finished||Object.values(s.done||{}).some(a=>a.some(Boolean)));
 function lastWeight(u,id,before){const ks=Object.keys(U(u).sessions).filter(k=>k<before).sort().reverse();for(const k of ks){const w=U(u).sessions[k].weights?.[id];if(w)return{kg:w,date:k}}return null}
-function history(u,id){return Object.keys(U(u).sessions).sort().map(k=>({date:k,kg:U(u).sessions[k].weights?.[id]})).filter(x=>x.kg)}
+function pesoHist(u,id){return Object.keys(U(u).sessions).sort().map(k=>({date:k,kg:U(u).sessions[k].weights?.[id]})).filter(x=>x.kg)}
 function shouldGoUp(u,e,before){const h=Object.keys(U(u).sessions).filter(k=>k<before).sort().reverse().map(k=>U(u).sessions[k]).filter(s=>s.weights?.[e.id]).slice(0,2);
   return h.length===2&&h[0].weights[e.id]===h[1].weights[e.id]&&h.every(s=>(s.done?.[e.id]||[]).filter(Boolean).length>=e.sets)}
 function monthCount(u,y,m){return Object.entries(U(u).sessions).filter(([k,s])=>trained(s)&&parse(k).getFullYear()===y&&parse(k).getMonth()===m).length}
@@ -540,7 +540,7 @@ function vProg(){
   const u=viewer(),ro=!!st.view;const e=exById(st.prog);const P=prs(u);
   const bw=U(u).body.slice().sort((a,b)=>a.date<b.date?-1:1);
   let h=`${ro?roBanner():""}<div><h2>Progresso</h2><div class="muted">${USERS[u]}</div></div>
-  <div class="card"><h3>Evolução da carga</h3><select id="prog-ex" aria-label="Exercício">${exOptions(st.prog)}</select>${lineChart([{color:UCOL[u],data:history(u,st.prog)}])}<span class="muted" style="font-size:12px">${e.sets} séries × ${e.reps} · Treino ${e.id[0]}</span></div>
+  <div class="card"><h3>Evolução da carga</h3><select id="prog-ex" aria-label="Exercício">${exOptions(st.prog)}</select>${lineChart([{color:UCOL[u],data:pesoHist(u,st.prog)}])}<span class="muted" style="font-size:12px">${e.sets} séries × ${e.reps} · Treino ${e.id[0]}</span></div>
   <div class="card"><h3>Recordes pessoais 🏆</h3>${P.news.length?P.news.slice(0,6).map(p=>`<div class="pr"><span>${esc(exById(p.id).name)}<br><span class="muted" style="font-size:12px">${br(p.date)} · antes ${fmt(p.from)} kg</span></span><b>${fmt(p.kg)} kg</b></div>`).join(""):`<p class="muted">Quando você bater o seu maior peso em um exercício, ele aparece aqui.</p>`}</div>
   ${stravaCard(u,ro)}<div class="card"><h3>Peso corporal</h3>${lineChart([{color:"var(--gold)",data:bw}],{h:140})}${ro?"":`<form class="inline" id="bwform"><input id="bw-in" type="number" step="0.1" inputmode="decimal" placeholder="Seu peso hoje (kg)" aria-label="Peso corporal"><button type="submit">Salvar</button></form>`}</div>
   <div class="card"><h3>Fotos de evolução</h3>${U(u).photos.length?`<div class="photos">${U(u).photos.map(p=>`<figure><img src="${p.src}" alt="Foto de ${br(p.date)}"><figcaption>${br(p.date)}</figcaption></figure>`).join("")}</div>`:`<p class="muted">Uma foto por mês, sempre no mesmo lugar e com a mesma luz, mostra bem a mudança.</p>`}${ro?"":`<label class="file">+ Adicionar foto<input type="file" accept="image/*" id="photo-in"></label>`}</div>
@@ -562,7 +562,7 @@ function vDupla(){
   <div class="card"><h3>Duelo da semana</h3>${cmp(a.mc,b.mc,"treinos no mês")}${cmp(Math.round(a.vol),Math.round(b.vol),"kg levantados na semana",v=>v.toLocaleString("pt-BR"))}${cmp(a.pr.news.filter(p=>p.date>=weekKey(TODAY)).length,b.pr.news.filter(p=>p.date>=weekKey(TODAY)).length,"recordes na semana")}</div>
   <div class="card"><h3>Comparar exercício</h3><select id="cmp-ex" aria-label="Exercício para comparar">${exOptions(st.cmp)}</select>
   ${cmp(lwA?.kg||0,lwB?.kg||0,"último peso (kg)",v=>v?fmt(v):"–")}
-  ${lineChart(us.slice(0,2).map(u=>({color:UCOL[u],data:history(u,st.cmp)})))}
+  ${lineChart(us.slice(0,2).map(u=>({color:UCOL[u],data:pesoHist(u,st.cmp)})))}
   <div class="legend">${us.slice(0,2).map(u=>`<span style="--c:${UCOL[u]}">${esc(USERS[u])}</span>`).join("")}</div></div>
   <div class="card feed"><h3>Últimos treinos</h3>${feed.map(f=>`<div class="li"><span class="dot" style="--c:var(--${f.s.letter})">${f.s.letter}</span><span style="flex:1"><b>${USERS[f.u]}</b> fez ${PLAN[f.s.letter].name}</span><span class="muted">${br(f.k)}</span></div>`).join("")||`<p class="muted">Nenhum treino ainda.</p>`}</div>
   <div class="row">${us.filter(u=>u!==DB.me).map(u=>`<button type="button" class="btn" data-see="${u}" style="flex:1">Ver calendário do ${USERS[u]}</button>`).join("")}</div>`}
@@ -627,24 +627,33 @@ try{applyLook()}catch(e){}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {initializeFirestore,persistentLocalCache,doc,setDoc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {initializeFirestore,persistentLocalCache,doc,setDoc,getDoc,deleteDoc,onSnapshot,collection} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {firebaseConfig,strava} from "./firebase-config.js";
 const $=s=>document.querySelector(s);
 if(!firebaseConfig.apiKey||firebaseConfig.apiKey.startsWith("COLE")){$("#auth").hidden=false;$("#authmsg").textContent="Falta ligar o app ao Firebase (arquivo firebase-config.js).";$("#authform").hidden=true;$("#a-toggle").hidden=true;throw new Error("sem config")}
 const app=initializeApp(firebaseConfig),auth=getAuth(app);
 const db=initializeFirestore(app,{localCache:persistentLocalCache()});
-window.STRAVA={ready:!!(strava&&strava.clientId&&strava.fnUrl)};
-async function stCall(action,code){const t=await auth.currentUser.getIdToken();const r=await fetch(strava.fnUrl,{method:"POST",headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify({action,code})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Erro "+r.status);return j}
+window.STRAVA={ready:!!(strava&&strava.clientId&&(strava.fnUrl||strava.tokenUrl))};
+async function stTok(body){const r=await fetch(strava.tokenUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||j.error||"Erro "+r.status);return j}
+async function stLocal(action,code){const uid=auth.currentUser.uid,priv=doc(db,"strava_tokens",uid),pub=doc(db,"corridas",uid);
+  if(action==="connect"){const j=await stTok({grant_type:"authorization_code",code});await setDoc(priv,{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at});await setDoc(pub,{connected:true,name:[j.athlete&&j.athlete.firstname,j.athlete&&j.athlete.lastname].filter(Boolean).join(" ")},{merge:true})}
+  if(action==="disconnect"){await deleteDoc(priv).catch(()=>{});await setDoc(pub,{connected:false},{merge:true});return{ok:true}}
+  const s=await getDoc(priv);if(!s.exists())return{connected:false};let t=s.data();
+  if(t.expires_at<Date.now()/1e3+120){const j=await stTok({grant_type:"refresh_token",refresh_token:t.refresh_token});t={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at};await setDoc(priv,t)}
+  const after=Math.floor(Date.now()/1e3)-90*86400;const r=await fetch("https://www.strava.com/api/v3/athlete/activities?after="+after+"&per_page=200",{headers:{Authorization:"Bearer "+t.access_token}});const acts=await r.json().catch(()=>[]);if(!r.ok)throw new Error((acts&&acts.message)||"Erro "+r.status);
+  const runs={};for(const a of acts){const ty=a.sport_type||a.type||"";if(!/Run/.test(ty))continue;const d=String(a.start_date_local);runs[a.id]={date:d.slice(0,10),hour:d.slice(11,16),name:a.name||"",dist:a.distance||0,time:a.moving_time||0,type:ty,hr:a.average_heartrate||null,elev:a.total_elevation_gain||0}}
+  await setDoc(pub,{connected:true,runs,lastSync:Date.now()},{merge:true});return{ok:true,count:Object.keys(runs).length}}
+async function stCall(action,code){if(strava.tokenUrl)return stLocal(action,code);const t=await auth.currentUser.getIdToken();const r=await fetch(strava.fnUrl,{method:"POST",headers:{"Authorization":"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify({action,code})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Erro "+r.status);return j}
 let lastAuto=0;
 window.FB={save:data=>setDoc(doc(db,"atletas",auth.currentUser.uid),data),logout:()=>signOut(auth),
   stravaConnect:()=>{const redir=location.origin+location.pathname;location.href="https://www.strava.com/oauth/authorize?client_id="+strava.clientId+"&response_type=code&approval_prompt=auto&scope=activity:read_all&state=treino&redirect_uri="+encodeURIComponent(redir)},
-  stravaSync:async(manual)=>{try{const j=await stCall("sync");if(manual)window.toastMsg&&window.toastMsg(j.count!=null?j.count+" corridas sincronizadas":"Strava não conectado")}catch(e){if(manual)window.toastMsg&&window.toastMsg("Não consegui falar com o Strava: "+e.message)}},
+  stravaSync:async(manual)=>{try{const j=await stCall("sync");if(manual)window.toastMsg&&window.toastMsg(j.count!=null?j.count+(j.count===1?" corrida sincronizada":" corridas sincronizadas"):"Strava não conectado")}catch(e){if(manual)window.toastMsg&&window.toastMsg("Não consegui falar com o Strava: "+e.message)}},
   stravaDisconnect:async()=>{try{await stCall("disconnect");window.toastMsg&&window.toastMsg("Strava desconectado")}catch(e){window.toastMsg&&window.toastMsg(e.message)}}};
 window.onRunsMine=(me,R)=>{if(!window.STRAVA.ready||!R||!R.connected)return;if(Date.now()-lastAuto<10*60e3)return;if(R.lastSync&&Date.now()-R.lastSync<10*60e3)return;lastAuto=Date.now();window.FB.stravaSync(false)};
 let unsub=null,unsubR=null;
 onAuthStateChanged(auth,u=>{if(unsub){unsub();unsub=null}
   if(!u){window.showAuth();return}
-  const q=new URLSearchParams(location.search);if(q.get("state")==="treino"&&(q.get("code")||q.get("error"))){history.replaceState(null,"",location.pathname);if(q.get("code")){window.toastMsg&&window.toastMsg("Conectando ao Strava...");stCall("connect",q.get("code")).then(j=>window.toastMsg&&window.toastMsg("Strava conectado! "+(j.count||0)+" corridas")).catch(e=>window.toastMsg&&window.toastMsg("Strava: "+e.message))}}
+  const q=new URLSearchParams(location.search);if(q.get("state")==="treino"&&(q.get("code")||q.get("error"))){history.replaceState(null,"",location.pathname);if(q.get("code")){window.toastMsg&&window.toastMsg("Conectando ao Strava...");stCall("connect",q.get("code")).then(j=>window.toastMsg&&window.toastMsg("Strava conectado! "+(j.count||0)+((j.count===1)?" corrida":" corridas"))).catch(e=>window.toastMsg&&window.toastMsg("Strava: "+e.message))}}
   if(unsubR){unsubR();unsubR=null}
   unsubR=onSnapshot(collection(db,"corridas"),snap=>{const all={};snap.forEach(d=>all[d.id]=d.data());window.onRuns(u.uid,all)},()=>{});
   unsub=onSnapshot(collection(db,"atletas"),snap=>{const all={};snap.forEach(d=>all[d.id]=d.data());window.onData(u.uid,all)},
