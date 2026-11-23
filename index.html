@@ -82,6 +82,26 @@ h3{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spa
 .exmeta{font-size:12px;color:var(--muted)}
 .check{flex:none;width:40px;height:40px;border-radius:12px;border:2px solid var(--line);background:var(--panel2);display:grid;place-items:center;font-size:20px;color:transparent}
 .ex.done .check{background:var(--ok);border-color:var(--ok);color:#0d1422}
+/* exemplo do movimento: duas fotos (início e fim) que se alternam */
+.demo-img{position:relative;display:block;width:100%;aspect-ratio:3/2;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--fg) 8%,transparent);border:1px solid color-mix(in srgb,var(--fg) 14%,transparent);padding:0;cursor:zoom-in}
+.demo-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.demo-img img+img{animation:demoflip 2.6s ease-in-out infinite}
+@keyframes demoflip{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.demo-img img+img{animation-duration:5s}}
+.demo-img .tag{position:absolute;left:8px;bottom:8px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;color:#fff;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.exopen{all:unset;cursor:pointer;display:block;font-weight:600;flex:1;min-width:0;-webkit-tap-highlight-color:transparent}
+.exopen .see{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:12px;font-weight:600;color:var(--accent)}
+.ex.done .exopen{color:var(--muted);text-decoration:line-through}
+.demobox{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45);padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));animation:fadein .18s ease-out}
+.demobox[hidden]{display:none}
+.demobox .sheet{width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px;padding:14px;background:color-mix(in srgb,var(--bg) 70%,transparent);border:1px solid color-mix(in srgb,var(--fg) 16%,transparent);border-radius:24px;box-shadow:0 20px 50px rgba(0,0,0,.4);backdrop-filter:blur(26px) saturate(170%);-webkit-backdrop-filter:blur(26px) saturate(170%);animation:sheetup .22s ease-out}
+.demobox .sheet .demo-img{cursor:default}
+.demobox h3{margin:0;font-size:18px}
+.demobox .row2{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.demobox .x{width:36px;height:36px;flex:none;border-radius:50%;border:1px solid color-mix(in srgb,var(--fg) 18%,transparent);background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg);font-size:18px;cursor:pointer}
+.demobox .credit{font-size:11px;color:var(--muted)}
+@keyframes fadein{from{opacity:0}}
+@keyframes sheetup{from{transform:translateY(30px);opacity:0}}
 .weight{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stepper{display:flex;align-items:center;background:var(--panel2);border-radius:12px;overflow:hidden}
 .stepper button{border:0;background:none;width:42px;height:44px;font-size:22px;font-weight:600}
@@ -321,6 +341,19 @@ const fmt=n=>(Math.round(n*10)/10).toString().replace(".",",");
 const exList=L=>PLAN[L].ex.map((e,i)=>({id:L+i,name:e[0],sets:e[1],reps:e[2],comp:!!e[3]}));
 const allEx=LET.split("").flatMap(exList);
 const exById=id=>allEx.find(e=>e.id===id);
+/* Exemplo em imagens. "card" = foto já aparece no exercício; "toque" = foto abre ao tocar no nome */
+let IMGMODE="card";
+const demoImg=(id,lazy)=>`<img src="img/ex/${id}_0.jpg" alt="" ${lazy?'loading="lazy"':""} decoding="async"><img src="img/ex/${id}_1.jpg" alt="" ${lazy?'loading="lazy"':""} decoding="async">`;
+function openDemo(id){const e=exById(id);if(!e)return;let b=$("#demobox");
+  if(!b){b=document.createElement("div");b.id="demobox";b.className="demobox";b.setAttribute("role","dialog");b.setAttribute("aria-modal","true");document.body.appendChild(b);
+    b.addEventListener("click",ev=>{if(ev.target===b||ev.target.closest(".x"))closeDemo()})}
+  b.innerHTML=`<div class="sheet"><div class="row2"><h3>${esc(e.name)}</h3><button type="button" class="x" aria-label="Fechar">✕</button></div>
+  <div class="demo-img">${demoImg(e.id)}<span class="tag">início ⇄ fim</span></div>
+  <div class="row2"><span class="muted">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</span></div>
+  <span class="credit">Foto ilustrativa: Free Exercise DB (domínio público). A máquina da sua academia pode ser um pouco diferente.</span></div>`;
+  b.hidden=false}
+function closeDemo(){const b=$("#demobox");if(b)b.hidden=true}
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeDemo()});
 const repMid=r=>{const m=r.match(/^(\d+)(?:–(\d+))?$/);return m?(+m[1]+ +(m[2]||m[1]))/2:0};
 
 /* ---------- dados (Firebase) ---------- */
@@ -414,7 +447,8 @@ function vHoje(){
   if(!L){return h+`<div class="tips">Hoje não tem treino marcado. Se quiser treinar mesmo assim, escolha uma letra acima.</div>`}
   const exs=exList(L);
   h+=exs.map(e=>{const w=sess?.letter===L?sess.weights?.[e.id]:undefined;const lw=lastWeight(u,e.id,TODAY);const val=w??lw?.kg??"";const done=(sess?.letter===L?sess.done?.[e.id]:null)||[];const all=done.filter(Boolean).length>=e.sets;const plank=/prancha|Abdômen/.test(e.name);
-    return`<div class="ex ${all?"done":""}" data-id="${e.id}"><div class="exhead"><div class="exname">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div></div><button type="button" class="check" data-all="${e.id}" aria-label="Marcar como concluído">✓</button></div>
+    return`<div class="ex ${all?"done":""}" data-id="${e.id}"><div class="exhead">${IMGMODE==="toque"?`<button type="button" class="exopen" data-demo="${e.id}">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div><span class="see">▶︎ Ver exemplo do movimento</span></button>`:`<div class="exname">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div></div>`}<button type="button" class="check" data-all="${e.id}" aria-label="Marcar como concluído">✓</button></div>
+    ${IMGMODE==="card"?`<button type="button" class="demo-img" data-demo="${e.id}" aria-label="Ver exemplo maior">${demoImg(e.id,true)}<span class="tag">início ⇄ fim</span></button>`:""}
     ${plank&&!lw?``:`<div class="weight"><div class="stepper"><button type="button" data-step="-1" data-id="${e.id}" aria-label="Menos peso">−</button><input id="w-${e.id}" type="number" inputmode="decimal" step="0.5" value="${val}" placeholder="–" data-w="${e.id}" aria-label="Peso em kg"><button type="button" data-step="1" data-id="${e.id}" aria-label="Mais peso">+</button></div><span class="kg">kg</span>${lw?`<span class="last">Última: ${fmt(lw.kg)} kg (${br(lw.date)})</span>`:`<span class="last">Primeira vez</span>`}${shouldGoUp(u,e,TODAY)?`<span class="up">⬆ Hora de subir a carga</span>`:""}</div>`}
     <div class="sets">${Array.from({length:e.sets},(_,i)=>`<button type="button" data-set="${e.id}" data-i="${i}" class="${done[i]?"on":""}" aria-label="Série ${i+1}">${i+1}</button>`).join("")}</div></div>`}).join("");
   const fin=sess?.finished&&sess.letter===L;
@@ -600,6 +634,7 @@ document.addEventListener("click",ev=>{
   if(t.id==="gear"){st.tab=st.tab==="ajustes"?"hoje":"ajustes";st.view=null;render();scrollTo(0,0);return}
   if(t.id==="back"){st.view=null;render();return}
   if(D.see){st.view=D.see;st.tab="cal";render();scrollTo(0,0);return}
+  if(D.demo){openDemo(D.demo);return}
   if(D.l){st.letter=D.l;render();return}
   if(D.mon){let[y,m]=st.month;m+=+D.mon;if(m<0){m=11;y--}if(m>11){m=0;y++}st.month=[y,m];render();return}
   if(D.day){st.sel=D.day;render();return}
