@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Treino ABCDE</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Treino">
@@ -12,6 +12,8 @@
 <meta name="theme-color" content="#111111">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
 <style>
+/* sem zoom por toque duplo (iPhone) */
+html,body,button,a,input,select,label{touch-action:manipulation}
 /* Layout: app de uma coluna para o celular, cabeçalho no topo, barra de abas fixa embaixo. Visual escuro de "garagem" com o vermelho das pecinhas. */
 :root{
   --bg:#0d1422; --panel:#151f33; --panel2:#1c2942; --line:#2a3a5c;
