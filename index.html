@@ -342,7 +342,7 @@ const exList=L=>PLAN[L].ex.map((e,i)=>({id:L+i,name:e[0],sets:e[1],reps:e[2],com
 const allEx=LET.split("").flatMap(exList);
 const exById=id=>allEx.find(e=>e.id===id);
 /* Exemplo em imagens. "card" = foto já aparece no exercício; "toque" = foto abre ao tocar no nome */
-let IMGMODE="card";
+let IMGMODE="toque";
 const demoImg=(id,lazy)=>`<img src="img/ex/${id}_0.jpg" alt="" ${lazy?'loading="lazy"':""} decoding="async"><img src="img/ex/${id}_1.jpg" alt="" ${lazy?'loading="lazy"':""} decoding="async">`;
 function openDemo(id){const e=exById(id);if(!e)return;let b=$("#demobox");
   if(!b){b=document.createElement("div");b.id="demobox";b.className="demobox";b.setAttribute("role","dialog");b.setAttribute("aria-modal","true");document.body.appendChild(b);
