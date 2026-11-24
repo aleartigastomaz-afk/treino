@@ -134,6 +134,8 @@ h3{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spa
 .pr.dn{align-items:center}.pr.dn>span{flex:1;min-width:0}.pr.dn b{white-space:normal}
 .undo{border:1px solid color-mix(in srgb,var(--fg) 18%,transparent);background:color-mix(in srgb,var(--fg) 6%,transparent);color:var(--muted);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:600;flex:none}
 .upk{color:var(--ok);font-weight:700}
+.sets .skip{width:auto;border-radius:19px;padding:0 12px;margin-left:auto;font-size:13px;font-weight:600;border-width:1px;border-style:dashed}
+.pr.sk b{color:var(--muted)}
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .wd{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;border-radius:12px;background:color-mix(in srgb,var(--fg) 6%,transparent);border:1px solid color-mix(in srgb,var(--fg) 10%,transparent)}
 .wd i{font-style:normal;font-family:var(--display);font-weight:800;font-size:17px;line-height:1;color:var(--muted)}
@@ -473,13 +475,13 @@ function vHoje(){
   const exs=exList(L);
   h+=placeCard(L,sess);
   h+=exs.map(e=>{const w=sess?.letter===L?sess.weights?.[e.id]:undefined;const lw=lastWeight(u,e.id,TODAY);const val=w??lw?.kg??"";const done=(sess?.letter===L?sess.done?.[e.id]:null)||[];const all=done.filter(Boolean).length>=e.sets;const plank=/prancha|Abdômen/.test(e.name);
-    if(all)return"";
+    if(all||exSkip(sess,L,e))return"";
     return`<div class="ex ${all?"done":""}" data-id="${e.id}"><div class="exhead">${IMGMODE==="toque"?`<button type="button" class="exopen" data-demo="${e.id}">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div><span class="see">▶︎ Ver exemplo do movimento</span></button>`:`<div class="exname">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div></div>`}<button type="button" class="check" data-all="${e.id}" aria-label="Marcar como concluído">✓</button></div>
     ${IMGMODE==="card"?`<button type="button" class="demo-img" data-demo="${e.id}" aria-label="Ver exemplo maior">${demoImg(e.id,true)}<span class="tag">início ⇄ fim</span></button>`:""}
     ${plank&&!lw?``:`<div class="weight"><div class="stepper"><button type="button" data-step="-1" data-id="${e.id}" aria-label="Menos peso">−</button><input id="w-${e.id}" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${kgTxt(val)}" placeholder="–" data-w="${e.id}" aria-label="Peso em kg (toque para digitar)"><button type="button" data-step="1" data-id="${e.id}" aria-label="Mais peso">+</button></div><span class="kg">kg</span>${lw?`<span class="last">Última: ${fmt(lw.kg)} kg (${br(lw.date)})</span>`:`<span class="last">Primeira vez</span>`}${shouldGoUp(u,e,TODAY)?`<span class="up">⬆ Hora de subir a carga</span>`:""}</div>`}
-    <div class="sets">${Array.from({length:e.sets},(_,i)=>`<button type="button" data-set="${e.id}" data-i="${i}" class="${done[i]?"on":""}" aria-label="Série ${i+1}">${i+1}</button>`).join("")}</div></div>`}).join("");
-  const nDone=exs.filter(e=>exDone(sess,L,e)).length;
-  if(nDone)h+=`<button type="button" class="gl donebar" data-tab="dash"><span>✓ <b>${nDone} de ${exs.length}</b> ${nDone>1?"exercícios feitos":"exercício feito"}${nDone===exs.length?" · tudo pronto! 🎉":""}</span><span class="go">Ver no Dashboard ›</span></button>`;
+    <div class="sets">${Array.from({length:e.sets},(_,i)=>`<button type="button" data-set="${e.id}" data-i="${i}" class="${done[i]?"on":""}" aria-label="Série ${i+1}">${i+1}</button>`).join("")}<button type="button" class="skip" data-skip="${e.id}" aria-label="Pular ${esc(e.name)} hoje">Pular ⤼</button></div></div>`}).join("");
+  const nDone=exs.filter(e=>exDone(sess,L,e)).length,nSkip=exs.filter(e=>!exDone(sess,L,e)&&exSkip(sess,L,e)).length;
+  if(nDone||nSkip)h+=`<button type="button" class="gl donebar" data-tab="dash"><span>${nDone?`✓ <b>${nDone} de ${exs.length}</b> ${nDone>1?"feitos":"feito"}`:""}${nDone&&nSkip?" · ":""}${nSkip?`⤼ ${nSkip} ${nSkip>1?"pulados":"pulado"}`:""}${nDone+nSkip===exs.length?" · tudo pronto! 🎉":""}</span><span class="go">Ver no Dashboard ›</span></button>`;
   const fin=sess?.finished&&sess.letter===L;
   h+=`<button type="button" class="big ${fin?"ghost":""}" id="finish">${fin?"Treino concluído ✓":"Terminar treino"}</button>
   ${fin?endCard(TODAY,sess,true):""}
@@ -672,11 +674,12 @@ function vDupla(){
   <div class="row">${us.filter(u=>u!==DB.me).map(u=>`<button type="button" class="btn" data-see="${u}" style="flex:1">Ver calendário do ${USERS[u]}</button>`).join("")}</div>`}
 
 /* ---------- dashboard ---------- */
+const exSkip=(s,L,e)=>!!(s&&s.letter===L&&s.skip&&s.skip[e.id]);
 const exDone=(s,L,e)=>!!(s&&s.letter===L&&(s.done?.[e.id]||[]).filter(Boolean).length>=e.sets);
 function vDash(){
   const u=DB.me,S=U(u).sessions,s=S[TODAY],d=parse(TODAY);
   const L=s?.letter||st.letter||defaultLetter();const exs=exList(L);
-  const feitos=exs.filter(e=>exDone(s,L,e));
+  const feitos=exs.filter(e=>exDone(s,L,e)),pulados=exs.filter(e=>!exDone(s,L,e)&&exSkip(s,L,e));
   const setsTot=exs.reduce((a,e)=>a+e.sets,0),setsOk=s&&s.letter===L?exs.reduce((a,e)=>a+Math.min(e.sets,(s.done?.[e.id]||[]).filter(Boolean).length),0):0;
   const volHoje=feitos.reduce((a,e)=>a+(s.weights?.[e.id]||0)*e.sets*repMid(e.reps),0);
   const dur=s&&s.start&&s.end?hmMin(s.end)-hmMin(s.start):null;
@@ -691,7 +694,8 @@ function vDash(){
   <div class="card"><h3>Feitos hoje</h3>${feitos.length?feitos.map(e=>{const w=s.weights?.[e.id];const lw=lastWeight(u,e.id,TODAY);const up=w&&lw&&w>lw.kg;
     return`<div class="pr dn"><span><b>${esc(e.name)}</b><br><span class="muted small">${e.sets} × ${e.reps}${w?` · <b>${fmt(w)} kg</b>`:""}${up?` <span class="upk">▲ +${fmt(w-lw.kg)}</span>`:lw&&w&&w===lw.kg?" · igual à última":""}</span></span><button type="button" class="undo" data-undo="${e.id}" aria-label="Desfazer ${esc(e.name)}">Desfazer</button></div>`}).join("")
     :`<p class="muted">Quando você marcar um exercício como feito no Hoje, ele sai de lá e aparece aqui.</p>`}
-    ${feitos.length<exs.length?`<button type="button" class="btn" data-tab="hoje">Faltam ${exs.length-feitos.length} · voltar ao Hoje</button>`:""}</div>`;
+    ${pulados.length?`<span class="muted small" style="margin-top:4px">PULADOS HOJE</span>`+pulados.map(e=>`<div class="pr dn sk"><span><b>⤼ ${esc(e.name)}</b><br><span class="muted small">${e.sets} × ${e.reps} · não fez hoje</span></span><button type="button" class="undo" data-unskip="${e.id}" aria-label="Desfazer pulo de ${esc(e.name)}">Desfazer</button></div>`).join(""):""}
+    ${feitos.length+pulados.length<exs.length?`<button type="button" class="btn" data-tab="hoje">Faltam ${exs.length-feitos.length-pulados.length} · voltar ao Hoje</button>`:""}</div>`;
   // semana
   const wk=parse(weekKey(TODAY));let dots="",nW=0,casa=0,smart=0;
   for(let i=0;i<7;i++){const k=ymd(new Date(wk.getFullYear(),wk.getMonth(),wk.getDate()+i));const x=S[k];const t=trained(x);if(t){nW++;if(x.place==="casa")casa++;if(x.place==="smart")smart++}
@@ -705,7 +709,7 @@ function vDash(){
 
 /* ---------- render e eventos ---------- */
 const ICONS={dash:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',agenda:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',hoje:'<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',prog:'<path d="M3 20h18M6 16l4-5 4 3 6-8"/>',dupla:'<circle cx="8" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M2 20c0-3 3-5 6-5s6 2 6 5M14 15.5c1-.3 2-.5 3-.5 3 0 5 2 5 5"/>'};
-const TABS=[["hoje","Hoje"],["dash","Dashboard"],["agenda","Agenda"],["cal","Calendário"],["prog","Progresso"],["dupla","Dupla"]];
+const TABS=[["dash","Dashboard"],["hoje","Hoje"],["agenda","Agenda"],["cal","Calendário"],["prog","Progresso"],["dupla","Dupla"]];
 function render(){
   document.body.classList.add("glass");
   applyLook();
@@ -745,6 +749,8 @@ document.addEventListener("click",ev=>{
   if(D.gymdel){if(t.dataset.sure){delete gymsOf(DB.me)[D.gymdel];save();render();toast("Lugar apagado")}else{t.dataset.sure="1";t.textContent="Toque de novo"}return}
   if(D.cplace){const s=U(DB.me).sessions[st.sel];if(s){if(s.place===D.cplace)delete s.place;else s.place=D.cplace;delete s.placeAuto;save();render()}return}
   const L=st.letter||U(DB.me).sessions[TODAY]?.letter||defaultLetter();
+  if(D.skip){const e=exById(D.skip),S=ensureSess(L);S.skip=S.skip||{};S.skip[e.id]=true;save();render();toast("⤼ Pulado. Se mudar de ideia, desfaça no Dashboard");return}
+  if(D.unskip){const s=U(DB.me).sessions[TODAY];if(s&&s.skip){delete s.skip[D.unskip];save();render();toast(exById(D.unskip).name+" voltou para o Hoje")}return}
   if(D.undo){const s=U(DB.me).sessions[TODAY];const e=exById(D.undo);if(s&&s.done){s.done[e.id]=Array(e.sets).fill(false);save();render();toast(e.name+" voltou para o Hoje")}return}
   if(D.geo){detectPlace(L);return}
   if(D.place){pickPlace(L,D.place);return}
