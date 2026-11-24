@@ -117,6 +117,16 @@ h3{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spa
 .sets button.on{background:var(--ok);border-color:var(--ok);color:#0d1422}
 .big{border:0;border-radius:16px;padding:16px;font-family:var(--display);font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:var(--accent);color:var(--onaccent);width:100%}
 .big.ghost{background:var(--panel);color:var(--muted)}
+.placebox .pl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.placebox .pl button{border:1.5px solid color-mix(in srgb,var(--fg) 18%,transparent);background:color-mix(in srgb,var(--fg) 6%,transparent);border-radius:14px;padding:12px 6px;font-weight:700;font-size:15px;color:var(--fg);display:flex;align-items:center;justify-content:center;gap:6px}
+.placebox .pl button.on{background:color-mix(in srgb,var(--accent) 32%,transparent);border-color:var(--accent)}
+.placebox .geo{background:none;border:0;color:var(--accent);font-weight:600;font-size:13px;padding:4px 0}
+.small{font-size:12px}
+.endbox input[type=time]{background:color-mix(in srgb,var(--fg) 8%,transparent);border:1px solid color-mix(in srgb,var(--fg) 18%,transparent);border-radius:12px;padding:8px 12px;font-family:var(--display);font-size:22px;font-weight:700;color:var(--fg);min-width:110px}
+.stepper input{border-radius:10px;background:color-mix(in srgb,var(--fg) 7%,transparent);box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--fg) 22%,transparent)}
+.stepper input:focus{outline:2px solid var(--accent);outline-offset:-2px}
+.gymrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.gymrow b{flex:1;min-width:120px}
+.gymrow button{border:1px solid color-mix(in srgb,var(--fg) 18%,transparent);background:color-mix(in srgb,var(--fg) 6%,transparent);color:var(--fg);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:600}
 .tips{font-size:12px;color:var(--muted);background:var(--panel);border-radius:12px;padding:10px 12px}
 
 .cal{background:var(--panel);border-radius:16px;padding:12px}
@@ -365,7 +375,7 @@ document.documentElement.dataset.pal=DB.look.pal;
 let saveT=null;
 function save(){try{localStorage.setItem(KEY+"-look",JSON.stringify(DB.look))}catch(e){}
   clearTimeout(saveT);saveT=setTimeout(()=>{saveT=null;const me=U(DB.me);if(!me||!window.FB)return;
-    window.FB.save({name:USERS[DB.me]||"",sessions:me.sessions,body:me.body,photos:me.photos,agenda:me.agenda||null,extras:me.extras||{},look:DB.look,updated:Date.now()}).catch(err=>toast("Não consegui salvar online. Tento de novo quando tiver internet."))},500)}
+    window.FB.save({name:USERS[DB.me]||"",sessions:me.sessions,body:me.body,photos:me.photos,agenda:me.agenda||null,extras:me.extras||{},gyms:me.gyms||{},look:DB.look,updated:Date.now()}).catch(err=>toast("Não consegui salvar online. Tento de novo quando tiver internet."))},500)}
 let pendingRender=false;
 window.onData=(uid,all)=>{
   DB.me=uid;const ids=Object.keys(all);
@@ -373,7 +383,7 @@ window.onData=(uid,all)=>{
   const order=[uid,...ids.filter(i=>i!==uid).sort()];
   USERS={};UCOL={};const cols=["var(--accent)","var(--B)","var(--D)","var(--E)"];
   const users={};order.forEach((i,n)=>{const d=all[i];USERS[i]=d.name||"Atleta";UCOL[i]=cols[n%4];
-    users[i]=(i===uid&&saveT&&DB.users[i])?DB.users[i]:{sessions:d.sessions||{},body:d.body||[],photos:d.photos||[],agenda:d.agenda||undefined,extras:d.extras||{}}});
+    users[i]=(i===uid&&saveT&&DB.users[i])?DB.users[i]:{sessions:d.sessions||{},body:d.body||[],photos:d.photos||[],agenda:d.agenda||undefined,extras:d.extras||{},gyms:d.gyms||{}}});
   DB.users=users;
   if(all[uid].look&&!saveT)DB.look=all[uid].look;
   if(!all[uid].updated&&!ids.includes(uid))save();
@@ -448,14 +458,16 @@ function vHoje(){
   <div class="letters">${LET.split("").map((x,i)=>`<button type="button" data-l="${x}" class="${x===L?"on":""}" style="--c:var(--${x})">${x}<span>${["seg","ter","qua","qui","sex"][i]}</span></button>`).join("")}</div>`;
   if(!L){return h+`<div class="tips">Hoje não tem treino marcado. Se quiser treinar mesmo assim, escolha uma letra acima.</div>`}
   const exs=exList(L);
+  h+=placeCard(L,sess);
   h+=exs.map(e=>{const w=sess?.letter===L?sess.weights?.[e.id]:undefined;const lw=lastWeight(u,e.id,TODAY);const val=w??lw?.kg??"";const done=(sess?.letter===L?sess.done?.[e.id]:null)||[];const all=done.filter(Boolean).length>=e.sets;const plank=/prancha|Abdômen/.test(e.name);
     return`<div class="ex ${all?"done":""}" data-id="${e.id}"><div class="exhead">${IMGMODE==="toque"?`<button type="button" class="exopen" data-demo="${e.id}">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div><span class="see">▶︎ Ver exemplo do movimento</span></button>`:`<div class="exname">${esc(e.name)}<div class="exmeta">${e.sets} séries × ${e.reps} · descanso ${e.comp?"90 s":"60 s"}</div></div>`}<button type="button" class="check" data-all="${e.id}" aria-label="Marcar como concluído">✓</button></div>
     ${IMGMODE==="card"?`<button type="button" class="demo-img" data-demo="${e.id}" aria-label="Ver exemplo maior">${demoImg(e.id,true)}<span class="tag">início ⇄ fim</span></button>`:""}
-    ${plank&&!lw?``:`<div class="weight"><div class="stepper"><button type="button" data-step="-1" data-id="${e.id}" aria-label="Menos peso">−</button><input id="w-${e.id}" type="number" inputmode="decimal" step="0.5" value="${val}" placeholder="–" data-w="${e.id}" aria-label="Peso em kg"><button type="button" data-step="1" data-id="${e.id}" aria-label="Mais peso">+</button></div><span class="kg">kg</span>${lw?`<span class="last">Última: ${fmt(lw.kg)} kg (${br(lw.date)})</span>`:`<span class="last">Primeira vez</span>`}${shouldGoUp(u,e,TODAY)?`<span class="up">⬆ Hora de subir a carga</span>`:""}</div>`}
+    ${plank&&!lw?``:`<div class="weight"><div class="stepper"><button type="button" data-step="-1" data-id="${e.id}" aria-label="Menos peso">−</button><input id="w-${e.id}" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${kgTxt(val)}" placeholder="–" data-w="${e.id}" aria-label="Peso em kg (toque para digitar)"><button type="button" data-step="1" data-id="${e.id}" aria-label="Mais peso">+</button></div><span class="kg">kg</span>${lw?`<span class="last">Última: ${fmt(lw.kg)} kg (${br(lw.date)})</span>`:`<span class="last">Primeira vez</span>`}${shouldGoUp(u,e,TODAY)?`<span class="up">⬆ Hora de subir a carga</span>`:""}</div>`}
     <div class="sets">${Array.from({length:e.sets},(_,i)=>`<button type="button" data-set="${e.id}" data-i="${i}" class="${done[i]?"on":""}" aria-label="Série ${i+1}">${i+1}</button>`).join("")}</div></div>`}).join("");
   const fin=sess?.finished&&sess.letter===L;
   h+=`<button type="button" class="big ${fin?"ghost":""}" id="finish">${fin?"Treino concluído ✓":"Terminar treino"}</button>
-  <div class="tips">Toque no número da série quando terminar: o cronômetro de descanso começa sozinho. O peso da última vez já vem preenchido.</div>`;
+  ${fin?endCard(TODAY,sess,true):""}
+  <div class="tips">Toque no número do peso para digitar (ex.: 22,5) ou use − e +. Toque no número da série quando terminar: o cronômetro de descanso começa sozinho. O peso da última vez já vem preenchido.</div>`;
   return h}
 /* ---------- corridas (Strava) ---------- */
 let RUNS={};
@@ -551,9 +563,49 @@ function vAjustes(){const[bg,ac]=curColors();
   ${DB.look.pal==="custom"?`<span class="muted" style="font-size:12px">Usando as suas cores. Toque numa paleta acima para voltar.</span>`:""}</div>
   <div class="card"><h3>Logo</h3><div class="logos">${Object.keys(LOGOS).map(k=>`<button type="button" data-logo="${k}" class="${DB.look.logo===k?"on":""}" aria-label="Logo ${k.slice(1)}"><img src="${LOGOS[k]}" alt=""></button>`).join("")}</div>
   <span class="muted" style="font-size:12px">O ícone da tela inicial do iPhone continua o mesmo até você adicionar o app de novo.</span></div>
+  ${gymsCard()}
   ${accountCard()}
   <div class="card"><h3>Sobre</h3><span>Treino ABCDE · Ciclo ${CYCLE.n} (${br(CYCLE.start)}/2026 a ${br(CYCLE.end)}/2027)</span></div>`}
-function ensureSess(L){const S=U(DB.me).sessions;if(!S[TODAY]||S[TODAY].letter!==L)S[TODAY]={letter:L,weights:{},done:{},finished:false};return S[TODAY]}
+function ensureSess(L){const S=U(DB.me).sessions;if(!S[TODAY]||S[TODAY].letter!==L){const old=S[TODAY];S[TODAY]={letter:L,weights:{},done:{},finished:false};if(old&&old.place)S[TODAY].place=old.place}return S[TODAY]}
+/* ---------- local do treino (casa / Smartfit) + horário ---------- */
+const PLACES={casa:["🏠","Casa"],smart:["🏋️","Smartfit"]};
+const placeTxt=k=>PLACES[k]?PLACES[k][0]+" "+PLACES[k][1]:"";
+const nowHM=()=>{const d=new Date();return pad(d.getHours())+":"+pad(d.getMinutes())};
+const hmMin=h=>{const m=String(h||"").match(/^(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null};
+const numIn=v=>parseFloat(String(v).replace(",","."));
+const kgTxt=v=>v===""||v==null?"":String(v).replace(".",",");
+function gymsOf(u){const x=U(u);if(!x.gyms)x.gyms={};return x.gyms}
+function distM(a,b){const r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r;const h=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*6371e3*Math.asin(Math.sqrt(h))}
+function getPos(){return new Promise((ok,no)=>{if(!navigator.geolocation)return no({code:9});navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),no,{enableHighAccuracy:true,timeout:15000,maximumAge:60000})})}
+function nearest(u,p){let best=null;const G=gymsOf(u);for(const k in PLACES)(G[k]||[]).forEach(g=>{const d=distM(p,g);if(!best||d<best.d)best={k,d}});return best&&best.d<=Math.max(350,Math.min(p.acc||0,800))?best:null}
+const hasGyms=u=>Object.values(gymsOf(u)).some(a=>a&&a.length);
+const geoErr=e=>e&&e.code===1?"A localização está bloqueada para o app. Libere em Ajustes do iPhone › Privacidade › Serviços de Localização. Ou escolha abaixo.":"Não consegui pegar a localização agora. Escolha abaixo.";
+let geoBusy=false;
+async function detectPlace(L){if(geoBusy)return;geoBusy=true;st.geoMsg="📍 Procurando onde você está…";st.lastPos=null;{const a=document.activeElement;if(!(a&&a.tagName==="INPUT"&&$("#view").contains(a)))render()}
+  try{const p=await getPos();const n=nearest(DB.me,p);
+    if(n){const S=ensureSess(L);S.place=n.k;S.placeAuto=true;save();st.geoMsg="📍 Reconheci pela localização.";toast("Você está em: "+PLACES[n.k][1])}
+    else{st.lastPos=p;st.geoMsg=hasGyms(DB.me)?"Não reconheci este lugar. Escolha abaixo e eu guardo este ponto também.":"Escolha onde você está. Eu guardo a localização para reconhecer sozinho da próxima vez."}
+  }catch(e){st.geoMsg=geoErr(e)}
+  geoBusy=false;if(st.tab==="hoje"){const a=document.activeElement;if(a&&a.tagName==="INPUT"&&$("#view").contains(a))pendingRender=true;else render()}}
+async function pickPlace(L,k){const S=ensureSess(L);if(S.place===k){delete S.place;delete S.placeAuto;save();render();return}
+  S.place=k;delete S.placeAuto;save();st.geoMsg="";render();
+  const G=gymsOf(DB.me);const list=G[k]||[];
+  try{const p=st.lastPos||await getPos();st.lastPos=null;if(p.acc>250)return;
+    if(list.some(g=>distM(p,g)<350))return;
+    const other=Object.keys(PLACES).filter(x=>x!==k).some(x=>(G[x]||[]).some(g=>distM(p,g)<350));if(other)return;
+    G[k]=[...list,{lat:+p.lat.toFixed(6),lng:+p.lng.toFixed(6)}];save();toast(list.length?"Guardei mais uma unidade: "+PLACES[k][1]:"Guardei onde fica: "+PLACES[k][1]+". Da próxima vez eu reconheço sozinho.")
+  }catch(e){}}
+async function saveGymHere(k){toast("Pegando a localização…");try{const p=await getPos();const G=gymsOf(DB.me);G[k]=[...(G[k]||[]),{lat:+p.lat.toFixed(6),lng:+p.lng.toFixed(6)}];save();render();toast("Lugar guardado: "+PLACES[k][1]+(p.acc>150?" (sinal fraco, precisão ~"+Math.round(p.acc)+" m)":""))}catch(e){toast(geoErr(e))}}
+function placeCard(L,sess){const cur=sess&&sess.letter===L?sess.place:null;
+  return`<div class="card placebox"><div class="row" style="justify-content:space-between"><h3>Onde você treina hoje?</h3><button type="button" class="geo" data-geo="1">📍 Detectar</button></div>
+  <div class="pl">${Object.keys(PLACES).map(k=>`<button type="button" data-place="${k}" class="${cur===k?"on":""}">${placeTxt(k)}</button>`).join("")}</div>
+  ${st.geoMsg?`<span class="muted small">${st.geoMsg}</span>`:cur&&sess.placeAuto?`<span class="muted small">📍 Reconhecido pela localização. Toque no outro se estiver errado.</span>`:""}</div>`}
+function endCard(k,s,editable){const dur=s.start&&s.end?hmMin(s.end)-hmMin(s.start):null;
+  return`<div class="card endbox"><div class="row" style="justify-content:space-between"><span><b>Terminou às</b></span>${editable?`<input type="time" data-end="${k}" value="${s.end||""}" aria-label="Horário que terminou">`:`<b>${s.end||"–"}</b>`}</div>
+  ${dur>0&&dur<300?`<span class="muted small">Começou ${s.start} · ${dur} min de treino</span>`:""}${editable?`<span class="muted small">Esqueceu de apertar na hora? Toque no horário e corrija.</span>`:""}</div>`}
+function gymsCard(){const G=gymsOf(DB.me);
+  return`<div class="card"><h3>Locais das academias</h3><span class="muted small">O app usa a localização do celular para marcar sozinho se o treino foi em casa ou na Smartfit. O ponto é guardado na primeira vez que você escolhe o lugar.</span>
+  ${Object.keys(PLACES).map(k=>{const n=(G[k]||[]).length;return`<div class="gymrow"><b>${placeTxt(k)}<br><span class="muted small">${n?n+(n>1?" lugares guardados":" lugar guardado"):"ainda não guardado"}</span></b><button type="button" data-gymhere="${k}">📍 Estou aqui</button>${n?`<button type="button" data-gymdel="${k}">Apagar</button>`:""}</div>`}).join("")}</div>`}
 
 function vCal(){
   const u=viewer();const ro=!!st.view;if(!st.month){const d=parse(TODAY);st.month=[d.getFullYear(),d.getMonth()]}
@@ -563,7 +615,7 @@ function vCal(){
     cells+=`<button type="button" class="day ${t?"tr":""} ${k===TODAY?"today":""} ${k===st.sel?"sel":""}" data-day="${k}" ${t?`style="--c:var(--${s.letter})"`:""}>${t?`<i>${s.letter}</i>`:""}<span>${i}</span></button>`}
   const sel=U(u).sessions[st.sel];
   let det=`<div class="detail"><b>${SEM[parse(st.sel).getDay()]}, ${br(st.sel)}</b>`;
-  if(trained(sel)){det+=`<span class="muted" style="font-size:13px">Treino ${sel.letter} · ${PLAN[sel.letter].name}</span>`+exList(sel.letter).map(e=>{const n=(sel.done?.[e.id]||[]).filter(Boolean).length;return`<div class="li"><span>${esc(e.name)}</span><b>${sel.weights?.[e.id]?fmt(sel.weights[e.id])+" kg":""} <span class="muted">${n}/${e.sets}</span></b></div>`}).join("")}
+  if(trained(sel)){det+=`<span class="muted" style="font-size:13px">Treino ${sel.letter} · ${PLAN[sel.letter].name}${sel.place&&ro?" · "+placeTxt(sel.place):""}${sel.end&&ro?" · terminou "+sel.end:""}</span>`+(ro?"":`<div class="placebox"><div class="pl">${Object.keys(PLACES).map(k=>`<button type="button" data-cplace="${k}" class="${sel.place===k?"on":""}">${placeTxt(k)}</button>`).join("")}</div></div><div class="row endbox" style="justify-content:space-between;margin:4px 0 6px"><span>Terminou às</span><input type="time" data-end="${st.sel}" value="${sel.end||""}" aria-label="Horário que terminou"></div>`)+exList(sel.letter).map(e=>{const n=(sel.done?.[e.id]||[]).filter(Boolean).length;return`<div class="li"><span>${esc(e.name)}</span><b>${sel.weights?.[e.id]?fmt(sel.weights[e.id])+" kg":""} <span class="muted">${n}/${e.sets}</span></b></div>`}).join("")}
   else det+=`<span class="muted">Nenhum treino neste dia.</span>`;{const ag=agendaOf(u)[parse(st.sel).getDay()]||[];const ex=extrasOf(u,st.sel);const done=ag.filter(it=>!isGym(it.t)&&ex[agKey(it)]);const rr=runsOn(u,st.sel);if(rr.length)det+=rr.map(r=>`<div class="li"><span>🏃 ${esc(r.name||"Corrida")} (Strava)</span><b>${runLine(r)}</b></div>`).join("");if(done.length)det+=`<span class="muted" style="font-size:13px;margin-top:6px">Também fez: ${done.map(it=>agIcon(it.t)+" "+esc(it.t)).join(", ")}</span>`}det+=`</div>`;
   return`${ro?roBanner():""}<div><h2>Calendário</h2><div class="muted">${USERS[u]}</div></div>
   <div class="stats"><div class="stat"><b>${monthCount(u,y,m)}</b><span>treinos em ${MES[m].slice(0,3)}</span></div><div class="stat"><b>${streak(u)}</b><span>semanas com 3+</span></div><div class="stat"><b>${Object.values(U(u).sessions).filter(trained).length}</b><span>no total</span></div></div>
@@ -614,6 +666,7 @@ function render(){
   const banner=hasDemo()?`<div class="demo"><span>Treinos de exemplo para você ver como fica.</span><button type="button" id="cleardemo">Apagar exemplos</button></div>`:"";
   $("#gear").classList.toggle("on",st.tab==="ajustes");
   $("#view").innerHTML=(["ajustes","eu","agenda"].includes(st.tab)?"":banner)+({hoje:vHoje,cal:vCal,prog:vProg,dupla:vDupla,ajustes:vAjustes,eu:vEu,agenda:vAgenda}[st.tab])();
+  if(st.tab==="hoje"&&!st.view&&DB.me){const s=U(DB.me).sessions[TODAY];const L=st.letter||s?.letter||defaultLetter();if(L&&!(s&&s.place)&&hasGyms(DB.me)&&st.geoAuto!==TODAY){st.geoAuto=TODAY;setTimeout(()=>detectPlace(L),400)}}
 }
 document.addEventListener("click",ev=>{
   const t=ev.target.closest("button");if(!t||!DB.me)return;const D=t.dataset;
@@ -640,19 +693,28 @@ document.addEventListener("click",ev=>{
   if(D.l){st.letter=D.l;render();return}
   if(D.mon){let[y,m]=st.month;m+=+D.mon;if(m<0){m=11;y--}if(m>11){m=0;y++}st.month=[y,m];render();return}
   if(D.day){st.sel=D.day;render();return}
+  if(D.gymhere){saveGymHere(D.gymhere);return}
+  if(D.gymdel){if(t.dataset.sure){delete gymsOf(DB.me)[D.gymdel];save();render();toast("Lugar apagado")}else{t.dataset.sure="1";t.textContent="Toque de novo"}return}
+  if(D.cplace){const s=U(DB.me).sessions[st.sel];if(s){if(s.place===D.cplace)delete s.place;else s.place=D.cplace;delete s.placeAuto;save();render()}return}
   const L=st.letter||U(DB.me).sessions[TODAY]?.letter||defaultLetter();
-  if(D.step){const inp=$("#w-"+D.id);const v=parseFloat(inp.value)||0;const s=v>=30?2.5:1;const n=Math.max(0,v+ +D.step*s);inp.value=n;const S=ensureSess(L);S.weights[D.id]=n;save();return}
+  if(D.geo){detectPlace(L);return}
+  if(D.place){pickPlace(L,D.place);return}
+  if(D.step){const inp=$("#w-"+D.id);const v=numIn(inp.value)||0;const s=v>=30?2.5:1;const n=Math.max(0,Math.round((v+ +D.step*s)*100)/100);inp.value=kgTxt(n);const S=ensureSess(L);S.weights[D.id]=n;save();return}
   if(D.set){const e=exById(D.set),S=ensureSess(L);const arr=S.done[e.id]||Array(e.sets).fill(false);arr[+D.i]=!arr[+D.i];S.done[e.id]=arr;
-    const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id])S.weights[e.id]=parseFloat(inp.value);save();
+    const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id]&&numIn(inp.value)>=0)S.weights[e.id]=numIn(inp.value);if(arr[+D.i]&&!S.start)S.start=nowHM();save();
     if(arr[+D.i]&&arr.filter(Boolean).length<e.sets)startTimer(e.comp?90:60);render();return}
   if(D.all){const e=exById(D.all),S=ensureSess(L);const full=(S.done[e.id]||[]).filter(Boolean).length>=e.sets;S.done[e.id]=Array(e.sets).fill(!full);
-    const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id])S.weights[e.id]=parseFloat(inp.value);save();render();return}
-  if(t.id==="finish"){const S=ensureSess(L);if(S.finished){S.finished=false}else{exList(L).forEach(e=>{const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id])S.weights[e.id]=parseFloat(inp.value)});S.finished=true;toast("Treino "+L+" concluído! 💪")}save();render();return}
+    const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id]&&numIn(inp.value)>=0)S.weights[e.id]=numIn(inp.value);if(!full&&!S.start)S.start=nowHM();save();render();return}
+  if(t.id==="finish"){const S=ensureSess(L);if(S.finished){S.finished=false;delete S.end}else{exList(L).forEach(e=>{const inp=$("#w-"+e.id);if(inp&&inp.value&&!S.weights[e.id]&&numIn(inp.value)>=0)S.weights[e.id]=numIn(inp.value)});S.finished=true;S.end=nowHM();toast("Treino "+L+" concluído às "+S.end+"! 💪")}save();render();return}
 });
-document.addEventListener("input",ev=>{const t=ev.target;if(t.id==="c-bg"||t.id==="c-ac"){const[bg,ac]=curColors();DB.look.bg=t.id==="c-bg"?t.value:bg;DB.look.accent=t.id==="c-ac"?t.value:ac;DB.look.pal="custom";applyLook();$("#"+t.id+"-v").textContent=t.value.toUpperCase()}});
+document.addEventListener("focusin",ev=>{const t=ev.target;if(t.dataset&&t.dataset.w)setTimeout(()=>{try{t.select()}catch(e){}},0)});
+function setW(t){const L=st.letter||U(DB.me).sessions[TODAY]?.letter||defaultLetter();const S=ensureSess(L);const v=numIn(t.value);if(v>=0)S.weights[t.dataset.w]=v;else delete S.weights[t.dataset.w];save()}
+document.addEventListener("keydown",ev=>{if(ev.key==="Enter"&&ev.target.dataset&&ev.target.dataset.w)ev.target.blur()});
+document.addEventListener("input",ev=>{const t=ev.target;if(t.dataset&&t.dataset.w&&DB.me){setW(t);return}if(t.id==="c-bg"||t.id==="c-ac"){const[bg,ac]=curColors();DB.look.bg=t.id==="c-bg"?t.value:bg;DB.look.accent=t.id==="c-ac"?t.value:ac;DB.look.pal="custom";applyLook();$("#"+t.id+"-v").textContent=t.value.toUpperCase()}});
 document.addEventListener("change",ev=>{const t=ev.target;
   if(t.id==="c-bg"||t.id==="c-ac"){save();render();return}
-  if(t.dataset.w){const L=st.letter||U(DB.me).sessions[TODAY]?.letter||defaultLetter();const S=ensureSess(L);const v=parseFloat(String(t.value).replace(",","."));if(v>=0)S.weights[t.dataset.w]=v;else delete S.weights[t.dataset.w];save();return}
+  if(t.dataset.w){setW(t);return}
+  if(t.dataset.end){const s=U(DB.me).sessions[t.dataset.end];if(s){if(t.value)s.end=t.value;else delete s.end;save();toast(t.value?"Horário salvo: "+t.value:"Horário apagado");if(t.dataset.end!==TODAY)render()}return}
   if(t.id==="prog-ex"){st.prog=t.value;render();return}
   if(t.id==="cmp-ex"){st.cmp=t.value;render();return}
   if(t.id==="photo-in"&&t.files[0]){const fr=new FileReader();fr.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas"),s=Math.min(1,480/Math.max(img.width,img.height));c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);U(DB.me).photos.push({date:TODAY,src:c.toDataURL("image/jpeg",.75)});save();render();toast("Foto salva")};img.src=fr.result};fr.readAsDataURL(t.files[0])}
